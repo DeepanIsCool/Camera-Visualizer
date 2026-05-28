@@ -1,0 +1,1974 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Multi-Camera FOV Visualizer</title>
+  <meta name="description"
+    content="Interactive 3D multi-camera field-of-view visualizer for computer vision boat setups" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #0a1628;
+      color: #e2e8f0;
+      font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    }
+
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+    }
+
+    .ui-panel {
+      position: absolute;
+      z-index: 10;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(100, 116, 139, 0.25);
+      border-radius: 0.875rem;
+      box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 2px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+
+    /* Sliders */
+    input[type="range"] {
+      height: 4px;
+      background-color: #334155;
+      border-radius: 2px;
+      appearance: none;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      background: linear-gradient(135deg, #60a5fa, #3b82f6);
+      border-radius: 50%;
+      border: 2px solid #1e293b;
+      box-shadow:
+        0 0 6px rgba(59, 130, 246, 0.5),
+        0 1px 3px rgba(0, 0, 0, 0.3);
+      transition: transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:active {
+      transform: scale(1.25);
+    }
+
+    .cam-tab {
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .cam-tab.active {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(99, 102, 241, 0.15));
+      border-color: #3b82f6;
+      color: #93c5fd;
+      font-weight: 600;
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
+    }
+
+    .color-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .color-swatch:hover {
+      transform: scale(1.15);
+    }
+
+    .color-swatch.active {
+      border-color: #e2e8f0;
+      transform: scale(1.15);
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+    }
+
+    .section-box {
+      background: rgba(30, 41, 59, 0.6);
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(71, 85, 105, 0.3);
+    }
+
+    .section-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #64748b;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+    }
+
+    .slider-row {
+      margin-bottom: 0.5rem;
+    }
+
+    .slider-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 3px;
+    }
+
+    .slider-header .label {
+      color: #94a3b8;
+    }
+
+    .slider-header .value {
+      font-family: "JetBrains Mono", "Fira Code", monospace;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    /* Joystick */
+    .joystick-area {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .joystick-canvas {
+      border-radius: 50%;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .joystick-canvas:active {
+      cursor: grabbing;
+    }
+
+    .height-canvas {
+      border-radius: 8px;
+      cursor: ns-resize;
+      touch-action: none;
+    }
+
+    .joystick-labels {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      font-size: 10px;
+      color: #64748b;
+      margin-top: 4px;
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    /* Copy config */
+    .copy-section {
+      background: rgba(30, 58, 95, 0.5);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      animation: slideDown 0.2s ease;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #60a5fa, #3b82f6);
+      transform: translateY(-1px);
+    }
+
+    .btn-ghost {
+      background: rgba(51, 65, 85, 0.5);
+      color: #94a3b8;
+      border: 1px solid rgba(71, 85, 105, 0.4);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(71, 85, 105, 0.5);
+      color: #e2e8f0;
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: #f87171;
+      border: 1px solid rgba(248, 113, 113, 0.3);
+    }
+
+    .btn-danger:hover {
+      background: rgba(248, 113, 113, 0.1);
+    }
+
+    select {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 11px;
+      outline: none;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    select:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="canvas-container"></div>
+
+  <!-- ===== LEFT PANEL: Camera Array Manager ===== -->
+  <div class="ui-panel" style="top: 16px; left: 16px; width: 340px; max-height: 95vh">
+    <!-- Header -->
+    <div style="
+          padding: 12px 14px;
+          border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+          border-radius: 0.875rem 0.875rem 0 0;
+        ">
+      <h2 style="
+            font-size: 14px;
+            font-weight: 700;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          ">
+        <svg style="width: 18px; height: 18px; color: #60a5fa" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
+          </path>
+        </svg>
+        Camera Array
+      </h2>
+      <button id="add-cam-btn" class="btn-sm btn-primary">
+        <svg style="width: 12px; height: 12px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+        </svg>
+        Add
+      </button>
+    </div>
+
+    <!-- Camera Tabs -->
+    <div id="cam-tabs" style="
+          display: flex;
+          overflow-x: auto;
+          gap: 6px;
+          padding: 8px 12px;
+          background: rgba(15, 23, 42, 0.5);
+          border-bottom: 1px solid rgba(71, 85, 105, 0.2);
+          min-height: 44px;
+        "></div>
+
+    <!-- Active Camera Settings -->
+    <div style="
+          padding: 12px;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          font-size: 12px;
+          flex: 1;
+        ">
+      <!-- Name & Color -->
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <span id="active-cam-name" style="font-weight: 700; color: #e2e8f0; font-size: 13px">Camera 1</span>
+        <div id="color-picker" style="display: flex; gap: 4px"></div>
+      </div>
+
+      <!-- Placement Section -->
+      <div class="section-box">
+        <div class="section-label">Placement (X/Y Plane, Z Height)</div>
+
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="label">Pos X (Left/Right)</span><span id="pos-x-val" class="value">0m</span>
+          </div>
+          <input type="range" id="pos-x" min="-50" max="50" step="0.5" value="0" />
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="label">Pos Y (Fwd/Back)</span><span id="pos-y-val" class="value">0m</span>
+          </div>
+          <input type="range" id="pos-y" min="-50" max="50" step="0.5" value="0" />
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="label">Pos Z (Up/Down)</span><span id="pos-z-val" class="value">0m</span>
+          </div>
+          <input type="range" id="pos-z" min="0" max="30" step="0.5" value="0" />
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="label">Pan (Yaw)</span><span id="pan-val" class="value">0°</span>
+          </div>
+          <input type="range" id="pan" min="-180" max="180" step="1" value="0" />
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="label">Tilt (Pitch)</span><span id="tilt-val" class="value">0°</span>
+          </div>
+          <input type="range" id="tilt" min="-90" max="90" step="1" value="0" />
+        </div>
+      </div>
+
+      <!-- Joystick Section -->
+      <div class="section-box">
+        <div class="section-label">FOV Direction Joystick</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <canvas id="joystick-xy" class="joystick-canvas" width="140" height="140"
+            style="width: 140px; height: 140px; display: block;"></canvas>
+          <div style="font-size: 9px; color: #64748b;">Drag to aim Pan / Tilt</div>
+          <div class="joystick-labels">
+            <span id="joy-x-val">Pan: 0°</span>
+            <span id="joy-y-val">Tilt: 0°</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Optics -->
+      <div class="section-box">
+        <div class="section-label">Optics &amp; Sensor</div>
+        <div class="slider-row">
+          <select id="res-preset">
+            <option value="1920,1080">1080p HD (1920×1080)</option>
+            <option value="2592,1944">5MP (2592×1944)</option>
+            <option value="3280,2464">8MP Pi Cam 2 (3280×2464)</option>
+            <option value="4608,2592" selected>
+              12MP Pi Cam 3 (4608×2592)
+            </option>
+          </select>
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="label">Lens FOV (Horiz)</span><span id="hfov-val" class="value"
+              style="color: #60a5fa">66°</span>
+          </div>
+          <input type="range" id="hfov" min="15" max="140" value="66" />
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="label">Visualizer Range</span><span id="range-val" class="value">60m</span>
+          </div>
+          <input type="range" id="range" min="10" max="150" value="60" />
+          <p style="
+                font-size: 9px;
+                color: #475569;
+                margin-top: 4px;
+                line-height: 1.3;
+              ">
+            Changes FOV cone length. Detection uses actual target distance.
+          </p>
+        </div>
+      </div>
+
+      <!-- Copy Config -->
+      <button id="toggle-copy-btn" class="btn-sm btn-ghost" style="width: 100%">
+        📋 Copy Config To…
+      </button>
+      <div id="copy-section" style="display: none" class="copy-section">
+        <div style="font-size: 10px; font-weight: 600; color: #93c5fd; margin-bottom: 6px">
+          Select target camera(s):
+        </div>
+        <div id="copy-targets" style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px"></div>
+        <div style="display: flex; gap: 6px; align-items: center">
+          <select id="copy-mode" style="flex: 1">
+            <option value="all">All Settings</option>
+            <option value="placement">Placement Only</option>
+            <option value="optics">Optics Only</option>
+          </select>
+          <button id="do-copy-btn" class="btn-sm btn-primary">Paste</button>
+        </div>
+      </div>
+
+      <!-- Remove -->
+      <button id="del-cam-btn" class="btn-sm btn-danger" style="width: 100%">
+        Remove Camera
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== BOTTOM PANEL: Target Config ===== -->
+  <div class="ui-panel" style="
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 420px;
+        padding: 12px;
+        flex-direction: row;
+        gap: 12px;
+        align-items: center;
+      ">
+    <div style="
+          flex-shrink: 0;
+          font-size: 10px;
+          font-weight: 800;
+          color: #f87171;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          border-right: 1px solid rgba(71, 85, 105, 0.3);
+          padding-right: 12px;
+          gap: 4px;
+        ">
+      <svg style="width: 20px; height: 20px; color: #f87171" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" stroke-width="2" />
+        <circle cx="12" cy="12" r="6" stroke-width="2" />
+        <circle cx="12" cy="12" r="2" fill="currentColor" />
+      </svg>
+      TARGET
+    </div>
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+      <div style="display: flex; gap: 10px">
+        <div style="flex: 1">
+          <div style="
+                display: flex;
+                justify-content: space-between;
+                font-size: 10px;
+                font-weight: 600;
+                margin-bottom: 2px;
+              ">
+            <span style="color: #94a3b8">X Position</span><span id="target-x-val"
+              style="font-family: monospace; color: #e2e8f0">0m</span>
+          </div>
+          <input type="range" id="target-x" min="-100" max="100" step="1" value="0" />
+        </div>
+        <div style="flex: 1">
+          <div style="
+                display: flex;
+                justify-content: space-between;
+                font-size: 10px;
+                font-weight: 600;
+                margin-bottom: 2px;
+              ">
+            <span style="color: #94a3b8">Y Position</span><span id="target-y-val"
+              style="font-family: monospace; color: #e2e8f0">-50m</span>
+          </div>
+          <input type="range" id="target-y" min="-150" max="50" step="1" value="-50" />
+        </div>
+      </div>
+      <div>
+        <div style="
+              display: flex;
+              justify-content: space-between;
+              font-size: 10px;
+              font-weight: 600;
+              margin-bottom: 2px;
+            ">
+          <span style="color: #94a3b8">Target Width</span><span id="target-w-val"
+            style="font-family: monospace; color: #e2e8f0">0.6m (2ft)</span>
+        </div>
+        <input type="range" id="target-w" min="0.1" max="2.0" step="0.1" value="0.6" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RIGHT PANEL: Metrics & AI ===== -->
+  <div class="ui-panel" style="top: 16px; right: 16px; width: 280px; padding: 14px">
+    <h2 style="
+          font-size: 13px;
+          font-weight: 700;
+          margin-bottom: 12px;
+          color: #e2e8f0;
+          border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+          padding-bottom: 8px;
+        ">
+      Active Camera Metrics
+    </h2>
+
+    <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px">
+      <div style="
+            display: flex;
+            justify-content: space-between;
+            color: #94a3b8;
+          ">
+        <span>Dist. to Target:</span>
+        <span id="out-actual-dist" style="font-family: monospace; font-weight: 600; color: #e2e8f0">--</span>
+      </div>
+
+      <!-- Detection Viability -->
+      <div id="viability-box" style="
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            background: rgba(30, 41, 59, 0.6);
+            margin-top: 4px;
+            transition: all 0.3s;
+          ">
+        <h3 style="
+              text-align: center;
+              font-weight: 700;
+              font-size: 13px;
+              margin-bottom: 4px;
+              color: #e2e8f0;
+            ">
+          Pixels on Target
+        </h3>
+        <p id="out-pixels" style="
+              text-align: center;
+              font-size: 28px;
+              font-family: monospace;
+              font-weight: 800;
+              margin-bottom: 4px;
+            ">
+          -- px
+        </p>
+        <p id="out-status" style="text-align: center; font-weight: 700; font-size: 11px"></p>
+      </div>
+
+      <!-- AI Features -->
+      <div style="
+            background: rgba(79, 70, 229, 0.1);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            margin-top: 8px;
+          ">
+        <h3 style="
+              color: #a5b4fc;
+              font-weight: 700;
+              font-size: 11px;
+              margin-bottom: 8px;
+            ">
+          Hardware Consultant
+        </h3>
+        <button id="ai-btn" class="btn-sm" style="
+              width: 100%;
+              background: linear-gradient(135deg, #6366f1, #4f46e5);
+              color: white;
+              justify-content: center;
+              box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+            ">
+          ✨ Analyze Setup
+        </button>
+        <div id="ai-output" style="
+              display: none;
+              margin-top: 8px;
+              font-size: 11px;
+              color: #cbd5e1;
+              max-height: 180px;
+              overflow-y: auto;
+              border-top: 1px solid rgba(99, 102, 241, 0.2);
+              padding-top: 8px;
+              background: rgba(15, 23, 42, 0.5);
+              padding: 8px;
+              border-radius: 6px;
+            "></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // ================================================================
+    // CONFIG & STATE
+    // ================================================================
+    const cameraColors = [
+      "#DC2626",
+      "#EA580C",
+      "#CA8A04",
+      "#16A34A",
+      "#2563EB",
+      "#9333EA",
+    ];
+
+    let cameraState = [
+      {
+        id: 1,
+        name: "Cam 1",
+        color: cameraColors[0],
+        x: 0,
+        y: 0,
+        z: 0,
+        pan: 0,
+        tilt: 0,
+        range: 60,
+        hRes: 4608,
+        vRes: 2592,
+        hFovDeg: 66,
+      },
+    ];
+    let nextCamId = 2;
+    let activeCamId = 1;
+    let targetState = { x: 0, y: -50, width: 0.6 };
+    const apiKey = "";
+
+    // ================================================================
+    // THREE.JS GLOBALS
+    // ================================================================
+    let scene, camera, renderer, controls, clock;
+    let targetGroup;
+    let waterMesh, waterMaterial;
+    const cam3DObjects = {};
+
+    // Joystick state
+    const joystickXY = { active: false, startPan: 0, startTilt: 0 };
+
+    // ================================================================
+    // DOM ELEMENTS
+    // ================================================================
+    const els = {
+      camTabs: document.getElementById("cam-tabs"),
+      addCamBtn: document.getElementById("add-cam-btn"),
+      delCamBtn: document.getElementById("del-cam-btn"),
+      activeCamName: document.getElementById("active-cam-name"),
+      colorPicker: document.getElementById("color-picker"),
+
+      posX: document.getElementById("pos-x"),
+      posY: document.getElementById("pos-y"),
+      posZ: document.getElementById("pos-z"),
+      pan: document.getElementById("pan"),
+      tilt: document.getElementById("tilt"),
+      valX: document.getElementById("pos-x-val"),
+      valY: document.getElementById("pos-y-val"),
+      valZ: document.getElementById("pos-z-val"),
+      valPan: document.getElementById("pan-val"),
+      valTilt: document.getElementById("tilt-val"),
+
+      resPreset: document.getElementById("res-preset"),
+      hfov: document.getElementById("hfov"),
+      valHfov: document.getElementById("hfov-val"),
+      range: document.getElementById("range"),
+      valRange: document.getElementById("range-val"),
+
+      tarX: document.getElementById("target-x"),
+      tarY: document.getElementById("target-y"),
+      tarW: document.getElementById("target-w"),
+      valTarX: document.getElementById("target-x-val"),
+      valTarY: document.getElementById("target-y-val"),
+      valTarW: document.getElementById("target-w-val"),
+
+      outActualDist: document.getElementById("out-actual-dist"),
+      outPixels: document.getElementById("out-pixels"),
+      outStatus: document.getElementById("out-status"),
+      viabilityBox: document.getElementById("viability-box"),
+
+      aiBtn: document.getElementById("ai-btn"),
+      aiOutput: document.getElementById("ai-output"),
+
+      // Copy config
+      toggleCopyBtn: document.getElementById("toggle-copy-btn"),
+      copySection: document.getElementById("copy-section"),
+      copyTargets: document.getElementById("copy-targets"),
+      copyMode: document.getElementById("copy-mode"),
+      doCopyBtn: document.getElementById("do-copy-btn"),
+
+      // Joystick
+      joystickXYCanvas: document.getElementById("joystick-xy"),
+      joyXVal: document.getElementById("joy-x-val"),
+      joyYVal: document.getElementById("joy-y-val"),
+    };
+
+    // ================================================================
+    // INITIALIZATION
+    // ================================================================
+    window.onload = function () {
+      init3D();
+      initJoystickXY();
+      buildUI();
+      setupListeners();
+      updateAll();
+      animate();
+    };
+
+    // ================================================================
+    // 3D SCENE INITIALIZATION
+    // ================================================================
+    function init3D() {
+      const container = document.getElementById("canvas-container");
+      clock = new THREE.Clock();
+
+      scene = new THREE.Scene();
+
+      // Sky background gradient
+      const skyCanvas = document.createElement("canvas");
+      skyCanvas.width = 2;
+      skyCanvas.height = 512;
+      const skyCtx = skyCanvas.getContext("2d");
+      const grad = skyCtx.createLinearGradient(0, 0, 0, 512);
+      grad.addColorStop(0, "#1a365d");
+      grad.addColorStop(0.3, "#2d5a87");
+      grad.addColorStop(0.6, "#4a7fb5");
+      grad.addColorStop(0.85, "#7db8d4");
+      grad.addColorStop(1, "#a8d4e6");
+      skyCtx.fillStyle = grad;
+      skyCtx.fillRect(0, 0, 2, 512);
+      const skyTexture = new THREE.CanvasTexture(skyCanvas);
+      scene.background = skyTexture;
+
+      scene.fog = new THREE.FogExp2(0x3a6f8f, 0.004);
+
+      camera = new THREE.PerspectiveCamera(
+        50,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000,
+      );
+      camera.position.set(50, 35, 50);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.0;
+      container.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.target.set(0, 0, -25);
+
+      // Lighting
+      scene.add(new THREE.AmbientLight(0x8899bb, 0.6));
+      const dirLight = new THREE.DirectionalLight(0xffeedd, 0.8);
+      dirLight.position.set(30, 60, 30);
+      scene.add(dirLight);
+      const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x1a4060, 0.4);
+      scene.add(hemiLight);
+
+      // Water Plane
+      createWater();
+
+      // Axis Indicators
+      createAxisIndicators();
+
+      // Target Marker
+      createTargetMarker();
+    }
+
+    // ================================================================
+    // ANIMATED WATER PLANE
+    // ================================================================
+    function createWater() {
+      const waterGeo = new THREE.PlaneGeometry(300, 300, 100, 100);
+      waterGeo.rotateX(-Math.PI / 2);
+
+      waterMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0.0 },
+          uDeepColor: { value: new THREE.Color(0x0a3d5c) },
+          uSurfaceColor: { value: new THREE.Color(0x1a6e8e) },
+          uFoamColor: { value: new THREE.Color(0x8ecae6) },
+          uSunDir: {
+            value: new THREE.Vector3(0.4, 0.7, 0.3).normalize(),
+          },
+        },
+        vertexShader: `
+            uniform float uTime;
+            varying float vElevation;
+            varying vec3 vWorldPos;
+            varying vec3 vNormal;
+
+            float wave(vec2 p, float t) {
+              float w = 0.0;
+              w += sin(p.x * 0.25 + t * 0.7) * 0.5;
+              w += sin(p.y * 0.20 + t * 0.5) * 0.4;
+              w += sin((p.x + p.y) * 0.12 + t * 0.9) * 0.3;
+              w += sin((p.x - p.y * 0.7) * 0.35 + t * 1.2) * 0.2;
+              w += sin(p.x * 0.6 + p.y * 0.4 + t * 1.5) * 0.12;
+              w += sin(p.y * 0.7 - p.x * 0.2 + t * 0.3) * 0.15;
+              return w;
+            }
+
+            void main() {
+              vec3 pos = position;
+              float elev = wave(pos.xz, uTime);
+              pos.y += elev;
+              vElevation = elev;
+
+              // Compute normal via finite differences
+              float e = 0.15;
+              float hL = wave(pos.xz + vec2(-e, 0.0), uTime);
+              float hR = wave(pos.xz + vec2( e, 0.0), uTime);
+              float hD = wave(pos.xz + vec2(0.0, -e), uTime);
+              float hU = wave(pos.xz + vec2(0.0,  e), uTime);
+              vNormal = normalize(vec3(hL - hR, 2.0 * e, hD - hU));
+
+              vWorldPos = (modelMatrix * vec4(pos, 1.0)).xyz;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+            }
+          `,
+        fragmentShader: `
+            uniform vec3 uDeepColor;
+            uniform vec3 uSurfaceColor;
+            uniform vec3 uFoamColor;
+            uniform vec3 uSunDir;
+            uniform float uTime;
+            varying float vElevation;
+            varying vec3 vWorldPos;
+            varying vec3 vNormal;
+
+            void main() {
+              float depth = smoothstep(-0.8, 1.0, vElevation);
+              vec3 color = mix(uDeepColor, uSurfaceColor, depth);
+
+              // Diffuse lighting
+              float diff = max(dot(vNormal, uSunDir), 0.0);
+              color *= 0.55 + 0.45 * diff;
+
+              // Specular highlight
+              vec3 viewDir = normalize(cameraPosition - vWorldPos);
+              vec3 halfDir = normalize(uSunDir + viewDir);
+              float spec = pow(max(dot(vNormal, halfDir), 0.0), 80.0);
+              color += vec3(1.0, 0.95, 0.85) * spec * 0.6;
+
+              // Foam on wave peaks
+              float foam = smoothstep(0.6, 1.1, vElevation);
+              color = mix(color, uFoamColor, foam * 0.35);
+
+              // Subtle grid overlay
+              float gridX = abs(fract(vWorldPos.x / 10.0 + 0.5) - 0.5);
+              float gridZ = abs(fract(vWorldPos.z / 10.0 + 0.5) - 0.5);
+              float gridLine = 1.0 - smoothstep(0.0, 0.03, min(gridX, gridZ));
+              color = mix(color, vec3(0.6, 0.8, 0.9), gridLine * 0.12);
+
+              gl_FragColor = vec4(color, 0.88);
+            }
+          `,
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+
+      waterMesh = new THREE.Mesh(waterGeo, waterMaterial);
+      waterMesh.position.y = -0.1;
+      scene.add(waterMesh);
+    }
+
+    // ================================================================
+    // AXIS INDICATORS
+    // ================================================================
+    function createAxisIndicators() {
+      const length = 15;
+
+      // X axis - Red
+      const xArrow = new THREE.ArrowHelper(
+        new THREE.Vector3(1, 0, 0),
+        new THREE.Vector3(0, 0.15, 0),
+        length,
+        0xff4444,
+        1.5,
+        0.8,
+      );
+      scene.add(xArrow);
+
+      // Y axis (Three.js -Z = user's +Y forward)
+      const yArrow = new THREE.ArrowHelper(
+        new THREE.Vector3(0, 0, -1),
+        new THREE.Vector3(0, 0.15, 0),
+        length,
+        0x44ff44,
+        1.5,
+        0.8,
+      );
+      scene.add(yArrow);
+
+      // Z axis (Three.js +Y = user's +Z up)
+      const zArrow = new THREE.ArrowHelper(
+        new THREE.Vector3(0, 1, 0),
+        new THREE.Vector3(0, 0.15, 0),
+        length,
+        0x4488ff,
+        1.5,
+        0.8,
+      );
+      scene.add(zArrow);
+
+      // Labels
+      function makeLabel(text, color, position) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 80;
+        canvas.height = 40;
+        const ctx = canvas.getContext("2d");
+        ctx.font = "Bold 28px Inter, Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = color;
+        ctx.fillText(text, 40, 20);
+        const tex = new THREE.CanvasTexture(canvas);
+        const mat = new THREE.SpriteMaterial({
+          map: tex,
+          transparent: true,
+          depthTest: false,
+        });
+        const sprite = new THREE.Sprite(mat);
+        sprite.position.copy(position);
+        sprite.scale.set(3, 1.5, 1);
+        scene.add(sprite);
+      }
+
+      makeLabel("X", "#ff6666", new THREE.Vector3(length + 2, 0.5, 0));
+      makeLabel("Y", "#66ff66", new THREE.Vector3(0, 0.5, -(length + 2)));
+      makeLabel("Z", "#6699ff", new THREE.Vector3(0, length + 2, 0));
+    }
+
+    // ================================================================
+    // TARGET MARKER (Highly Visible)
+    // ================================================================
+    function createTargetMarker() {
+      targetGroup = new THREE.Group();
+
+      // Vertical beacon beam
+      const beamGeo = new THREE.CylinderGeometry(0.03, 0.03, 60, 4);
+      const beamMat = new THREE.MeshBasicMaterial({
+        color: 0xff3333,
+        transparent: true,
+        opacity: 0.2,
+        depthTest: false,
+      });
+      const beam = new THREE.Mesh(beamGeo, beamMat);
+      beam.position.y = 30;
+      beam.name = "beam";
+      targetGroup.add(beam);
+
+      // Pole
+      const poleGeo = new THREE.CylinderGeometry(0.08, 0.08, 3, 8);
+      const poleMat = new THREE.MeshPhongMaterial({
+        color: 0xcc0000,
+        emissive: 0x660000,
+      });
+      const pole = new THREE.Mesh(poleGeo, poleMat);
+      pole.position.y = 1.5;
+      targetGroup.add(pole);
+
+      // Diamond (octahedron) at top
+      const diamondGeo = new THREE.OctahedronGeometry(0.8, 0);
+      const diamondMat = new THREE.MeshPhongMaterial({
+        color: 0xff2222,
+        emissive: 0xff4444,
+        emissiveIntensity: 0.6,
+        transparent: true,
+        opacity: 0.95,
+      });
+      const diamond = new THREE.Mesh(diamondGeo, diamondMat);
+      diamond.position.y = 3.5;
+      diamond.name = "diamond";
+      targetGroup.add(diamond);
+
+      // Ground ring 1
+      const ring1Geo = new THREE.RingGeometry(1.2, 1.5, 32);
+      const ring1Mat = new THREE.MeshBasicMaterial({
+        color: 0xff4444,
+        transparent: true,
+        opacity: 0.6,
+        side: THREE.DoubleSide,
+        depthTest: false,
+      });
+      const ring1 = new THREE.Mesh(ring1Geo, ring1Mat);
+      ring1.rotation.x = -Math.PI / 2;
+      ring1.position.y = 0.05;
+      ring1.name = "ring1";
+      targetGroup.add(ring1);
+
+      // Ground ring 2 (outer, pulsing)
+      const ring2Geo = new THREE.RingGeometry(2.0, 2.3, 32);
+      const ring2Mat = new THREE.MeshBasicMaterial({
+        color: 0xff6666,
+        transparent: true,
+        opacity: 0.3,
+        side: THREE.DoubleSide,
+        depthTest: false,
+      });
+      const ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
+      ring2.rotation.x = -Math.PI / 2;
+      ring2.position.y = 0.04;
+      ring2.name = "ring2";
+      targetGroup.add(ring2);
+
+      // Cross on ground
+      const crossMat = new THREE.LineBasicMaterial({
+        color: 0xff4444,
+        transparent: true,
+        opacity: 0.5,
+        depthTest: false,
+      });
+      const crossGeo = new THREE.BufferGeometry();
+      crossGeo.setAttribute(
+        "position",
+        new THREE.BufferAttribute(
+          new Float32Array([
+            -2, 0.03, 0, 2, 0.03, 0, 0, 0.03, -2, 0, 0.03, 2,
+          ]),
+          3,
+        ),
+      );
+      const cross = new THREE.LineSegments(crossGeo, crossMat);
+      targetGroup.add(cross);
+
+      // Label sprite
+      const labelCanvas = document.createElement("canvas");
+      labelCanvas.width = 256;
+      labelCanvas.height = 80;
+      const lCtx = labelCanvas.getContext("2d");
+      lCtx.fillStyle = "rgba(220, 38, 38, 0.85)";
+      lCtx.beginPath();
+      lCtx.moveTo(20, 0);
+      lCtx.lineTo(236, 0);
+      lCtx.quadraticCurveTo(256, 0, 256, 20);
+      lCtx.lineTo(256, 60);
+      lCtx.quadraticCurveTo(256, 80, 236, 80);
+      lCtx.lineTo(20, 80);
+      lCtx.quadraticCurveTo(0, 80, 0, 60);
+      lCtx.lineTo(0, 20);
+      lCtx.quadraticCurveTo(0, 0, 20, 0);
+      lCtx.fill();
+      lCtx.font = "Bold 36px Inter, Arial";
+      lCtx.fillStyle = "#ffffff";
+      lCtx.textAlign = "center";
+      lCtx.textBaseline = "middle";
+      lCtx.fillText("⊕ TARGET", 128, 42);
+      const labelTex = new THREE.CanvasTexture(labelCanvas);
+      const labelMat = new THREE.SpriteMaterial({
+        map: labelTex,
+        transparent: true,
+        depthTest: false,
+      });
+      const labelSprite = new THREE.Sprite(labelMat);
+      labelSprite.position.y = 5.5;
+      labelSprite.scale.set(5, 1.6, 1);
+      labelSprite.name = "label";
+      targetGroup.add(labelSprite);
+
+      scene.add(targetGroup);
+    }
+
+    // ================================================================
+    // CAMERA 3D GEOMETRY
+    // ================================================================
+    function createCameraGeometry() {
+      const group = new THREE.Group();
+      group.rotation.order = "YXZ";
+
+      // Camera body - larger and more visible
+      const bodyGeo = new THREE.BoxGeometry(1.6, 1.2, 1.8);
+      const bodyMat = new THREE.MeshPhongMaterial({
+        color: 0x334155,
+        specular: 0x94a3b8,
+        shininess: 40,
+      });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.name = "body";
+      group.add(body);
+
+      // Colored top stripe (will be colored per-camera)
+      const stripeGeo = new THREE.BoxGeometry(1.6, 0.15, 1.8);
+      const stripeMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
+      const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+      stripe.position.y = 0.67;
+      stripe.name = "stripe";
+      group.add(stripe);
+
+      // Lens - larger
+      const lensGeo = new THREE.CylinderGeometry(0.5, 0.55, 0.6, 16);
+      const lensMat = new THREE.MeshPhongMaterial({
+        color: 0x0f172a,
+        specular: 0x64748b,
+        shininess: 80,
+      });
+      const lens = new THREE.Mesh(lensGeo, lensMat);
+      lens.rotation.x = Math.PI / 2;
+      lens.position.set(0, 0, -1.1);
+      group.add(lens);
+
+      // Lens ring (accent, colored per-camera)
+      const ringGeo = new THREE.TorusGeometry(0.52, 0.05, 8, 24);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
+      const lensRing = new THREE.Mesh(ringGeo, ringMat);
+      lensRing.position.set(0, 0, -1.42);
+      lensRing.name = "lensRing";
+      group.add(lensRing);
+
+      // Lens glass (reflective front)
+      const glassGeo = new THREE.CircleGeometry(0.45, 16);
+      const glassMat = new THREE.MeshBasicMaterial({
+        color: 0x1e3a5f,
+        transparent: true,
+        opacity: 0.7,
+      });
+      const glass = new THREE.Mesh(glassGeo, glassMat);
+      glass.position.set(0, 0, -1.43);
+      group.add(glass);
+
+      // Status LED
+      const ledGeo = new THREE.SphereGeometry(0.1, 8, 8);
+      const ledMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+      const led = new THREE.Mesh(ledGeo, ledMat);
+      led.position.set(0.65, 0.5, -0.91);
+      group.add(led);
+
+      // Floating label sprite (will be set per-camera)
+      const labelCanvas = document.createElement("canvas");
+      labelCanvas.width = 200;
+      labelCanvas.height = 60;
+      const lCtx = labelCanvas.getContext("2d");
+      lCtx.fillStyle = "rgba(15, 23, 42, 0.85)";
+      lCtx.beginPath();
+      lCtx.moveTo(10, 0); lCtx.lineTo(190, 0);
+      lCtx.quadraticCurveTo(200, 0, 200, 10);
+      lCtx.lineTo(200, 50); lCtx.quadraticCurveTo(200, 60, 190, 60);
+      lCtx.lineTo(10, 60); lCtx.quadraticCurveTo(0, 60, 0, 50);
+      lCtx.lineTo(0, 10); lCtx.quadraticCurveTo(0, 0, 10, 0);
+      lCtx.fill();
+      lCtx.strokeStyle = "rgba(59, 130, 246, 0.6)";
+      lCtx.lineWidth = 2;
+      lCtx.stroke();
+      lCtx.font = "Bold 28px Inter, Arial";
+      lCtx.fillStyle = "#93c5fd";
+      lCtx.textAlign = "center";
+      lCtx.textBaseline = "middle";
+      lCtx.fillText("📷 CAM", 100, 32);
+      const labelTex = new THREE.CanvasTexture(labelCanvas);
+      const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthTest: false });
+      const labelSprite = new THREE.Sprite(labelMat);
+      labelSprite.position.y = 2.2;
+      labelSprite.scale.set(4, 1.2, 1);
+      labelSprite.name = "camLabel";
+      group.add(labelSprite);
+
+      // Frustum Lines (8 line segments = 16 vertices * 3 = 48 floats)
+      const lineMat = new THREE.LineBasicMaterial({ transparent: true });
+      const lineGeo = new THREE.BufferGeometry();
+      lineGeo.setAttribute(
+        "position",
+        new THREE.BufferAttribute(new Float32Array(48), 3),
+      );
+      const frustumLines = new THREE.LineSegments(lineGeo, lineMat);
+      frustumLines.name = "lines";
+      group.add(frustumLines);
+
+      // Far plane fill
+      const planeGeo = new THREE.PlaneGeometry(1, 1);
+      const planeMat = new THREE.MeshBasicMaterial({
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      const plane = new THREE.Mesh(planeGeo, planeMat);
+      plane.name = "plane";
+
+      const edges = new THREE.EdgesGeometry(planeGeo);
+      const edgeLine = new THREE.LineSegments(
+        edges,
+        new THREE.LineBasicMaterial(),
+      );
+      edgeLine.name = "planeEdge";
+      plane.add(edgeLine);
+
+      group.add(plane);
+
+      // Frustum side walls (4 triangles: origin → adjacent far-plane corners)
+      const wallGeo = new THREE.BufferGeometry();
+      // 4 triangles × 3 vertices × 3 coords = 36 floats
+      wallGeo.setAttribute(
+        "position",
+        new THREE.BufferAttribute(new Float32Array(36), 3),
+      );
+      const wallMat = new THREE.MeshBasicMaterial({
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        opacity: 0.1,
+      });
+      const walls = new THREE.Mesh(wallGeo, wallMat);
+      walls.name = "walls";
+      group.add(walls);
+
+      return group;
+    }
+
+    function updateFrustumVisuals(
+      group,
+      hFovRad,
+      vFovRad,
+      range,
+      hexColor,
+      isActive,
+    ) {
+      const lines = group.getObjectByName("lines");
+      const plane = group.getObjectByName("plane");
+      const planeEdge = plane.getObjectByName("planeEdge");
+
+      const frameW = 2 * range * Math.tan(hFovRad / 2);
+      const frameH = 2 * range * Math.tan(vFovRad / 2);
+      const d = -range;
+      const halfW = frameW / 2;
+      const halfH = frameH / 2;
+
+      // 4 frustum edges from camera to corners + 4 far rectangle edges
+      const positions = new Float32Array([
+        // Camera to corners
+        0, 0, 0, halfW, halfH, d,
+        0, 0, 0, -halfW, halfH, d,
+        0, 0, 0, -halfW, -halfH, d,
+        0, 0, 0, halfW, -halfH, d,
+        // Far rectangle
+        halfW, halfH, d, -halfW, halfH, d,
+        -halfW, halfH, d, -halfW, -halfH, d,
+        -halfW, -halfH, d, halfW, -halfH, d,
+        halfW, -halfH, d, halfW, halfH, d,
+      ]);
+
+      lines.geometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(positions, 3),
+      );
+      lines.geometry.attributes.position.needsUpdate = true;
+
+      plane.position.set(0, 0, d);
+      plane.scale.set(frameW, frameH, 1);
+
+      const color = new THREE.Color(hexColor);
+      lines.material.color = color;
+      lines.material.opacity = isActive ? 1.0 : 0.7;
+
+      plane.material.color = color;
+      plane.material.opacity = isActive ? 0.22 : 0.12;
+
+      planeEdge.material.color = color;
+      planeEdge.material.opacity = isActive ? 1.0 : 0.6;
+
+      // Update frustum side walls
+      const walls = group.getObjectByName("walls");
+      if (walls) {
+        // 4 triangles: top, right, bottom, left
+        const wallPositions = new Float32Array([
+          // Top face: origin → top-right → top-left
+          0, 0, 0,   halfW,  halfH, d,  -halfW,  halfH, d,
+          // Right face: origin → bottom-right → top-right
+          0, 0, 0,   halfW, -halfH, d,   halfW,  halfH, d,
+          // Bottom face: origin → bottom-left → bottom-right
+          0, 0, 0,  -halfW, -halfH, d,   halfW, -halfH, d,
+          // Left face: origin → top-left → bottom-left
+          0, 0, 0,  -halfW,  halfH, d,  -halfW, -halfH, d,
+        ]);
+        walls.geometry.setAttribute(
+          "position",
+          new THREE.BufferAttribute(wallPositions, 3),
+        );
+        walls.geometry.attributes.position.needsUpdate = true;
+        walls.material.color = color;
+        walls.material.opacity = isActive ? 0.12 : 0.06;
+      }
+
+      // Color camera accents to match
+      const stripe = group.getObjectByName("stripe");
+      if (stripe) stripe.material.color = color;
+      const lensRing = group.getObjectByName("lensRing");
+      if (lensRing) lensRing.material.color = color;
+    }
+
+    // ================================================================
+    // UI BUILDING
+    // ================================================================
+    function buildUI() {
+      // Tabs
+      els.camTabs.innerHTML = "";
+      cameraState.forEach((cam) => {
+        const btn = document.createElement("button");
+        btn.className = `cam-tab ${cam.id === activeCamId ? "active" : ""}`;
+        btn.style.cssText = `
+            padding: 4px 10px; font-size: 11px; border-radius: 20px;
+            border: 1px solid ${cam.id === activeCamId ? "#3b82f6" : "#334155"};
+            background: ${cam.id === activeCamId ? "rgba(59,130,246,0.15)" : "rgba(30,41,59,0.6)"};
+            color: ${cam.id === activeCamId ? "#93c5fd" : "#94a3b8"};
+            cursor: pointer; transition: all 0.2s;
+          `;
+        btn.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${cam.color};margin-right:4px;border:1px solid rgba(255,255,255,0.2);box-shadow:0 0 4px ${cam.color}"></span>${cam.name}`;
+        btn.onclick = () => {
+          activeCamId = cam.id;
+          buildUI();
+          updateAll();
+        };
+        els.camTabs.appendChild(btn);
+      });
+
+      const activeCam = cameraState.find((c) => c.id === activeCamId);
+      els.activeCamName.innerText = activeCam.name;
+      els.delCamBtn.style.display =
+        cameraState.length > 1 ? "flex" : "none";
+
+      // Color Picker
+      els.colorPicker.innerHTML = "";
+      cameraColors.forEach((color) => {
+        const swatch = document.createElement("div");
+        swatch.className = `color-swatch ${activeCam.color === color ? "active" : ""}`;
+        swatch.style.backgroundColor = color;
+        swatch.onclick = () => {
+          activeCam.color = color;
+          buildUI();
+          updateAll();
+        };
+        els.colorPicker.appendChild(swatch);
+      });
+
+      // Sync Sliders
+      els.posX.value = activeCam.x;
+      els.valX.innerText = activeCam.x + "m";
+      els.posY.value = activeCam.y;
+      els.valY.innerText = activeCam.y + "m";
+      els.posZ.value = activeCam.z;
+      els.valZ.innerText = activeCam.z + "m";
+      els.pan.value = activeCam.pan;
+      els.valPan.innerText = activeCam.pan + "°";
+      els.tilt.value = activeCam.tilt;
+      els.valTilt.innerText = activeCam.tilt + "°";
+      els.hfov.value = activeCam.hFovDeg;
+      els.valHfov.innerText = activeCam.hFovDeg + "°";
+      els.range.value = activeCam.range;
+      els.valRange.innerText = activeCam.range + "m";
+      els.resPreset.value = `${activeCam.hRes},${activeCam.vRes}`;
+
+      // Sync Target
+      els.tarX.value = targetState.x;
+      els.valTarX.innerText = targetState.x + "m";
+      els.tarY.value = targetState.y;
+      els.valTarY.innerText = targetState.y + "m";
+      els.tarW.value = targetState.width;
+      els.valTarW.innerText = targetState.width.toFixed(1) + "m";
+
+      // Copy config targets
+      buildCopyTargets();
+    }
+
+    function buildCopyTargets() {
+      els.copyTargets.innerHTML = "";
+      cameraState.forEach((cam) => {
+        if (cam.id === activeCamId) return;
+        const label = document.createElement("label");
+        label.style.cssText =
+          "display:flex;align-items:center;gap:6px;font-size:11px;color:#cbd5e1;cursor:pointer;padding:3px 0;";
+        label.innerHTML = `<input type="checkbox" value="${cam.id}" checked style="accent-color:#3b82f6;cursor:pointer;">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${cam.color};box-shadow:0 0 4px ${cam.color}"></span>
+            ${cam.name}`;
+        els.copyTargets.appendChild(label);
+      });
+    }
+
+    // ================================================================
+    // EVENT LISTENERS
+    // ================================================================
+    function setupListeners() {
+      // Add/Remove Camera
+      els.addCamBtn.onclick = () => {
+        const newCam = {
+          id: nextCamId++,
+          name: `Cam ${nextCamId - 1}`,
+          color: cameraColors[(nextCamId - 2) % cameraColors.length],
+          x: Math.round(Math.random() * 20 - 10),
+          y: 0,
+          z: 0,
+          pan: 0,
+          tilt: 0,
+          range: 50,
+          hRes: 4608,
+          vRes: 2592,
+          hFovDeg: 66,
+        };
+        cameraState.push(newCam);
+        activeCamId = newCam.id;
+        buildUI();
+        updateAll();
+      };
+
+      els.delCamBtn.onclick = () => {
+        cameraState = cameraState.filter((c) => c.id !== activeCamId);
+        if (cam3DObjects[activeCamId]) {
+          scene.remove(cam3DObjects[activeCamId]);
+          delete cam3DObjects[activeCamId];
+        }
+        activeCamId = cameraState[0].id;
+        buildUI();
+        updateAll();
+      };
+
+      // Camera slider inputs
+      const updateActive = (key, val, elVal, suffix) => {
+        const cam = cameraState.find((c) => c.id === activeCamId);
+        cam[key] = parseFloat(val);
+        if (elVal) elVal.innerText = parseFloat(val) + suffix;
+        updateAll();
+      };
+
+      els.posX.oninput = (e) =>
+        updateActive("x", e.target.value, els.valX, "m");
+      els.posY.oninput = (e) =>
+        updateActive("y", e.target.value, els.valY, "m");
+      els.posZ.oninput = (e) =>
+        updateActive("z", e.target.value, els.valZ, "m");
+      els.pan.oninput = (e) =>
+        updateActive("pan", e.target.value, els.valPan, "°");
+      els.tilt.oninput = (e) =>
+        updateActive("tilt", e.target.value, els.valTilt, "°");
+      els.hfov.oninput = (e) =>
+        updateActive("hFovDeg", e.target.value, els.valHfov, "°");
+      els.range.oninput = (e) =>
+        updateActive("range", e.target.value, els.valRange, "m");
+
+      els.resPreset.onchange = (e) => {
+        const [w, h] = e.target.value.split(",").map(Number);
+        const cam = cameraState.find((c) => c.id === activeCamId);
+        cam.hRes = w;
+        cam.vRes = h;
+        updateAll();
+      };
+
+      // Target inputs
+      els.tarX.oninput = (e) => {
+        targetState.x = parseFloat(e.target.value);
+        els.valTarX.innerText = targetState.x + "m";
+        updateAll();
+      };
+      els.tarY.oninput = (e) => {
+        targetState.y = parseFloat(e.target.value);
+        els.valTarY.innerText = targetState.y + "m";
+        updateAll();
+      };
+      els.tarW.oninput = (e) => {
+        targetState.width = parseFloat(e.target.value);
+        els.valTarW.innerText = targetState.width.toFixed(1) + "m";
+        updateAll();
+      };
+
+      // Copy Config
+      els.toggleCopyBtn.onclick = () => {
+        const isVisible = els.copySection.style.display !== "none";
+        els.copySection.style.display = isVisible ? "none" : "block";
+        buildCopyTargets();
+      };
+
+      els.doCopyBtn.onclick = () => {
+        const sourceCam = cameraState.find((c) => c.id === activeCamId);
+        const mode = els.copyMode.value;
+        const checkboxes = els.copyTargets.querySelectorAll(
+          'input[type="checkbox"]:checked',
+        );
+
+        checkboxes.forEach((cb) => {
+          const targetCam = cameraState.find(
+            (c) => c.id === parseInt(cb.value),
+          );
+          if (!targetCam) return;
+
+          if (mode === "all" || mode === "placement") {
+            targetCam.x = sourceCam.x;
+            targetCam.y = sourceCam.y;
+            targetCam.z = sourceCam.z;
+            targetCam.pan = sourceCam.pan;
+            targetCam.tilt = sourceCam.tilt;
+          }
+          if (mode === "all" || mode === "optics") {
+            targetCam.hRes = sourceCam.hRes;
+            targetCam.vRes = sourceCam.vRes;
+            targetCam.hFovDeg = sourceCam.hFovDeg;
+            targetCam.range = sourceCam.range;
+          }
+        });
+
+        els.copySection.style.display = "none";
+        buildUI();
+        updateAll();
+
+        // Flash feedback
+        els.toggleCopyBtn.innerText = "✅ Copied!";
+        setTimeout(() => {
+          els.toggleCopyBtn.innerText = "📋 Copy Config To…";
+        }, 1200);
+      };
+
+      // AI
+      els.aiBtn.onclick = generateAIRecommendations;
+      window.addEventListener("resize", onWindowResize, false);
+    }
+
+    // ================================================================
+    // CORE UPDATE LOGIC
+    // ================================================================
+    function updateAll() {
+      // Update target marker position
+      // User coords: x → Three.js X, y → Three.js Z
+      targetGroup.position.set(targetState.x, 0, targetState.y);
+
+      let activePixels = 0;
+      let targetInView = false;
+      let distToTarget = 0;
+
+      cameraState.forEach((cam) => {
+        const isActive = cam.id === activeCamId;
+        let group = cam3DObjects[cam.id];
+
+        if (!group) {
+          group = createCameraGeometry();
+          cam3DObjects[cam.id] = group;
+          scene.add(group);
+        }
+
+        // Position: cam.x → Three.js X, cam.z → Three.js Y (height), cam.y → Three.js Z
+        group.position.set(cam.x, cam.z + 0.5, cam.y);
+
+        // Rotation: pan around Y axis, tilt around X axis. Order YXZ.
+        group.rotation.set(
+          THREE.MathUtils.degToRad(cam.tilt),
+          THREE.MathUtils.degToRad(-cam.pan),
+          0,
+        );
+
+        // FOV calculations
+        const aspectRatio = cam.hRes / cam.vRes;
+        const hFovRad = THREE.MathUtils.degToRad(cam.hFovDeg);
+        const vFovRad = 2 * Math.atan(Math.tan(hFovRad / 2) / aspectRatio);
+
+        updateFrustumVisuals(
+          group,
+          hFovRad,
+          vFovRad,
+          cam.range,
+          cam.color,
+          isActive,
+        );
+
+        // Detection math for active camera
+        if (isActive) {
+          const camWorldPos = new THREE.Vector3(
+            cam.x,
+            cam.z + 0.5,
+            cam.y,
+          );
+          const targetWorldPos = new THREE.Vector3(
+            targetState.x,
+            0.5,
+            targetState.y,
+          );
+          distToTarget = camWorldPos.distanceTo(targetWorldPos);
+
+          // Transform target to camera local space
+          const localTarget = group.worldToLocal(targetWorldPos.clone());
+
+          // In local space, -Z is forward
+          if (localTarget.z < 0 && distToTarget > 0) {
+            const angleH = Math.abs(
+              Math.atan2(localTarget.x, -localTarget.z),
+            );
+            const angleV = Math.abs(
+              Math.atan2(localTarget.y, -localTarget.z),
+            );
+            if (angleH <= hFovRad / 2 && angleV <= vFovRad / 2) {
+              targetInView = true;
+              const frameWidthAtTarget =
+                2 * distToTarget * Math.tan(hFovRad / 2);
+              const ppm = cam.hRes / frameWidthAtTarget;
+              activePixels = ppm * targetState.width;
+            }
+          }
+        }
+      });
+
+      // Update metrics UI
+      els.outActualDist.innerText = distToTarget.toFixed(1) + " m";
+
+      if (!targetInView) {
+        els.outPixels.innerText = "0 px";
+        els.outPixels.style.color = "#64748b";
+        els.viabilityBox.style.borderColor = "#334155";
+        els.viabilityBox.style.background = "rgba(30, 41, 59, 0.6)";
+        els.outStatus.innerText = "TARGET OUT OF VIEW";
+        els.outStatus.style.color = "#64748b";
+      } else {
+        els.outPixels.innerText = Math.round(activePixels) + " px";
+        if (activePixels < 15) {
+          els.outPixels.style.color = "#f87171";
+          els.viabilityBox.style.borderColor = "rgba(248, 113, 113, 0.4)";
+          els.viabilityBox.style.background = "rgba(127, 29, 29, 0.2)";
+          els.outStatus.innerText = "CRITICAL: Undetectable.";
+          els.outStatus.style.color = "#f87171";
+        } else if (activePixels < 24) {
+          els.outPixels.style.color = "#fbbf24";
+          els.viabilityBox.style.borderColor = "rgba(251, 191, 36, 0.4)";
+          els.viabilityBox.style.background = "rgba(120, 82, 0, 0.2)";
+          els.outStatus.innerText = "WARNING: Unreliable detection.";
+          els.outStatus.style.color = "#fbbf24";
+        } else {
+          els.outPixels.style.color = "#4ade80";
+          els.viabilityBox.style.borderColor = "rgba(74, 222, 128, 0.4)";
+          els.viabilityBox.style.background = "rgba(5, 80, 33, 0.2)";
+          els.outStatus.innerText = "GOOD: Viable for YOLO.";
+          els.outStatus.style.color = "#4ade80";
+        }
+      }
+
+      // Sync joystick display values
+      const activeCam = cameraState.find((c) => c.id === activeCamId);
+      if (activeCam) {
+        els.joyXVal.innerText = `Pan: ${Math.round(activeCam.pan)}°`;
+        els.joyYVal.innerText = `Tilt: ${Math.round(activeCam.tilt)}°`;
+      }
+    }
+
+    // ================================================================
+    // JOYSTICK: XY (circular) — Position-mapped for instant response
+    // ================================================================
+    function initJoystickXY() {
+      const canvas = els.joystickXYCanvas;
+      const ctx = canvas.getContext("2d");
+      const W = canvas.width;  // 140
+      const H = canvas.height; // 140
+      const centerX = W / 2;
+      const centerY = H / 2;
+      const maxR = 50;
+      const PAN_RANGE = 180;  // full deflection = ±180°
+      const TILT_RANGE = 90;  // full deflection = ±90°
+      let knobX = centerX;
+      let knobY = centerY;
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+
+        // Outer track
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, maxR + 8, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(30, 41, 59, 0.8)";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(100, 116, 139, 0.5)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Direction labels
+        ctx.fillStyle = "rgba(148, 163, 184, 0.5)";
+        ctx.font = "9px Inter, Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("▲ UP", centerX, centerY - maxR - 2);
+        ctx.fillText("▼ DOWN", centerX, centerY + maxR + 3);
+        ctx.fillText("◀", centerX - maxR - 2, centerY);
+        ctx.fillText("▶", centerX + maxR + 3, centerY);
+
+        // Cross guides
+        ctx.beginPath();
+        ctx.moveTo(centerX - maxR, centerY);
+        ctx.lineTo(centerX + maxR, centerY);
+        ctx.moveTo(centerX, centerY - maxR);
+        ctx.lineTo(centerX, centerY + maxR);
+        ctx.strokeStyle = "rgba(71, 85, 105, 0.3)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Center dot
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(100, 116, 139, 0.5)";
+        ctx.fill();
+
+        // Knob shadow
+        ctx.beginPath();
+        ctx.arc(knobX + 1, knobY + 2, 18, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+        ctx.fill();
+
+        // Knob
+        ctx.beginPath();
+        ctx.arc(knobX, knobY, 18, 0, Math.PI * 2);
+        const grad = ctx.createRadialGradient(
+          knobX - 3, knobY - 3, 0,
+          knobX, knobY, 18,
+        );
+        grad.addColorStop(0, "#93c5fd");
+        grad.addColorStop(1, "#3b82f6");
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.strokeStyle = "#2563eb";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Knob highlight
+        ctx.beginPath();
+        ctx.arc(knobX - 5, knobY - 5, 7, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.fill();
+      }
+
+      function clientToCanvas(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: (e.clientX - rect.left) * (W / rect.width),
+          y: (e.clientY - rect.top) * (H / rect.height),
+        };
+      }
+
+      // Directly apply pan/tilt from joystick displacement
+      function applyJoystick(dx, dy) {
+        const cam = cameraState.find((c) => c.id === activeCamId);
+        if (!cam) return;
+        // dx/dy are normalized -1..1
+        cam.pan = Math.max(-180, Math.min(180, Math.round(joystickXY.startPan + dx * PAN_RANGE)));
+        cam.tilt = Math.max(-90, Math.min(90, Math.round(joystickXY.startTilt + dy * TILT_RANGE)));
+        // Sync sliders immediately
+        els.pan.value = cam.pan;
+        els.valPan.innerText = cam.pan + "°";
+        els.tilt.value = cam.tilt;
+        els.valTilt.innerText = cam.tilt + "°";
+        els.joyXVal.innerText = `Pan: ${cam.pan}°`;
+        els.joyYVal.innerText = `Tilt: ${cam.tilt}°`;
+        updateAll();
+      }
+
+      function updateKnob(e) {
+        const pos = clientToCanvas(e);
+        let dx = pos.x - centerX;
+        let dy = pos.y - centerY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > maxR) {
+          dx = (dx / dist) * maxR;
+          dy = (dy / dist) * maxR;
+        }
+        knobX = centerX + dx;
+        knobY = centerY + dy;
+        // Apply immediately — no animation loop dependency
+        applyJoystick(dx / maxR, -dy / maxR);
+        draw();
+      }
+
+      canvas.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const cam = cameraState.find((c) => c.id === activeCamId);
+        if (cam) {
+          joystickXY.startPan = cam.pan;
+          joystickXY.startTilt = cam.tilt;
+        }
+        joystickXY.active = true;
+        canvas.setPointerCapture(e.pointerId);
+        updateKnob(e);
+      });
+      canvas.addEventListener("pointermove", (e) => {
+        if (!joystickXY.active) return;
+        e.preventDefault();
+        e.stopPropagation();
+        updateKnob(e);
+      });
+      function release() {
+        joystickXY.active = false;
+        knobX = centerX;
+        knobY = centerY;
+        draw();
+      }
+      canvas.addEventListener("pointerup", release);
+      canvas.addEventListener("pointercancel", release);
+      canvas.addEventListener("lostpointercapture", release);
+
+      draw();
+    }
+
+    // (Z joystick removed — pan/tilt joystick handles FOV direction)
+
+    // ================================================================
+    // AI API
+    // ================================================================
+    async function generateAIRecommendations() {
+      const cam = cameraState.find((c) => c.id === activeCamId);
+      const pixels = els.outPixels.innerText;
+      const dist = els.outActualDist.innerText;
+      const status = els.outStatus.innerText;
+
+      const prompt = `I am designing a multi-camera computer vision setup on a Raspberry Pi for a boat.
+            Evaluating active camera "${cam.name}":
+            - Res: ${cam.hRes}x${cam.vRes}
+            - Horiz FOV: ${cam.hFovDeg}°
+            - Position: X=${cam.x}m, Y=${cam.y}m, Height=${cam.z}m
+            - Pan: ${cam.pan}°, Tilt: ${cam.tilt}°
+            - Target Size: ${targetState.width}m
+            - Actual Distance to Target: ${dist}
+            - Pixels on Target: ${pixels} (${status})
+
+            Act as a concise computer vision engineer.
+            1. Evaluate if this specific camera angle/distance works.
+            2. Suggest a specific RPi hardware module/lens for this.
+            Keep it very brief, bullet points only, use bold text, no markdown headers.`;
+
+      els.aiBtn.innerHTML = `Analyzing...`;
+      els.aiBtn.disabled = true;
+      els.aiOutput.style.display = "block";
+      els.aiOutput.innerHTML =
+        '<p style="text-align:center;color:#64748b;margin-top:8px">Connecting...</p>';
+
+      try {
+        const result = await fetchWithRetry(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+            }),
+          },
+        );
+        const text =
+          result.candidates?.[0]?.content?.parts?.[0]?.text ||
+          "No response.";
+        const formatted = text
+          .replace(
+            /\*\*(.*?)\*\*/g,
+            '<span style="font-weight:700;color:#a5b4fc">$1</span>',
+          )
+          .replace(
+            /\* (.*?)\n/g,
+            '<li style="margin-left:12px;list-style:disc">$1</li>',
+          )
+          .replace(/\n/g, "<br/>");
+        els.aiOutput.innerHTML = `<ul style="display:flex;flex-direction:column;gap:2px">${formatted}</ul>`;
+      } catch (error) {
+        els.aiOutput.innerHTML = `<p style="color:#f87171">API Error: ${error.message || "Unknown"}</p>`;
+      } finally {
+        els.aiBtn.innerHTML = `✨ Analyze Setup`;
+        els.aiBtn.disabled = false;
+      }
+    }
+
+    async function fetchWithRetry(url, options, retries = 5) {
+      const delays = [1000, 2000, 4000, 8000, 16000];
+      for (let i = 0; i < retries; i++) {
+        try {
+          const response = await fetch(url, options);
+          if (!response.ok)
+            throw new Error(`HTTP error! status: ${response.status}`);
+          return await response.json();
+        } catch (e) {
+          if (i === retries - 1) throw e;
+          await new Promise((res) => setTimeout(res, delays[i]));
+        }
+      }
+    }
+
+    // ================================================================
+    // RESIZE
+    // ================================================================
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // ================================================================
+    // ANIMATION LOOP
+    // ================================================================
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const elapsed = clock.getElapsedTime();
+
+      // Joystick updates are now handled directly in pointer events (no lag)
+
+      // Water animation (slowed down for performance)
+      if (waterMaterial) {
+        waterMaterial.uniforms.uTime.value = elapsed * 0.25;
+      }
+
+      // Target animations
+      if (targetGroup) {
+        const diamond = targetGroup.getObjectByName("diamond");
+        if (diamond) {
+          diamond.rotation.y = elapsed * 1.5;
+          diamond.rotation.z = Math.sin(elapsed * 2) * 0.15;
+          const pulse = 1 + Math.sin(elapsed * 3) * 0.12;
+          diamond.scale.setScalar(pulse);
+        }
+
+        const ring1 = targetGroup.getObjectByName("ring1");
+        if (ring1) {
+          const s = 1 + Math.sin(elapsed * 2) * 0.2;
+          ring1.scale.set(s, s, 1);
+          ring1.material.opacity = 0.6 - Math.sin(elapsed * 2) * 0.15;
+        }
+
+        const ring2 = targetGroup.getObjectByName("ring2");
+        if (ring2) {
+          const s = 1 + Math.sin(elapsed * 1.5 + 1) * 0.3;
+          ring2.scale.set(s, s, 1);
+          ring2.material.opacity = 0.3 - Math.sin(elapsed * 1.5 + 1) * 0.1;
+        }
+
+        const beam = targetGroup.getObjectByName("beam");
+        if (beam) {
+          beam.material.opacity = 0.12 + Math.sin(elapsed * 2) * 0.08;
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+  </script>
+</body>
+
+</html>
