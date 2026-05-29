@@ -406,11 +406,13 @@
         <div class="section-label">Optics &amp; Sensor</div>
         <div class="slider-row">
           <select id="res-preset">
+            <option value="1600,1200">2MP (1600×1200)</option>
+            <option value="2048,1536">3MP (2048×1536)</option>
             <option value="1920,1080">1080p HD (1920×1080)</option>
             <option value="2592,1944">5MP (2592×1944)</option>
-            <option value="3280,2464">8MP Pi Cam 2 (3280×2464)</option>
+            <option value="3280,2464">8MP (3280×2464)</option>
             <option value="4608,2592" selected>
-              12MP Pi Cam 3 (4608×2592)
+              12MP (4608×2592)
             </option>
           </select>
         </div>
@@ -1307,13 +1309,13 @@
         // 4 triangles: top, right, bottom, left
         const wallPositions = new Float32Array([
           // Top face: origin → top-right → top-left
-          0, 0, 0,   halfW,  halfH, d,  -halfW,  halfH, d,
+          0, 0, 0, halfW, halfH, d, -halfW, halfH, d,
           // Right face: origin → bottom-right → top-right
-          0, 0, 0,   halfW, -halfH, d,   halfW,  halfH, d,
+          0, 0, 0, halfW, -halfH, d, halfW, halfH, d,
           // Bottom face: origin → bottom-left → bottom-right
-          0, 0, 0,  -halfW, -halfH, d,   halfW, -halfH, d,
+          0, 0, 0, -halfW, -halfH, d, halfW, -halfH, d,
           // Left face: origin → top-left → bottom-left
-          0, 0, 0,  -halfW,  halfH, d,  -halfW, -halfH, d,
+          0, 0, 0, -halfW, halfH, d, -halfW, -halfH, d,
         ]);
         walls.geometry.setAttribute(
           "position",
