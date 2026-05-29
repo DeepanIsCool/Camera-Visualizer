@@ -11,8 +11,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DDSLoader.js"></script>
   <!-- Embedded 3D Model data for local file:// usage without CORS -->
   <script src="cormorant_data.js"></script>
+  <script src="cormorant_textures.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     * {
@@ -1490,16 +1492,38 @@
       const oldDiamond = targetGroup.getObjectByName("diamond");
       if (oldDiamond) targetGroup.remove(oldDiamond);
 
-      // Dark material for cormorant (they're black birds)
-      const birdMat = new THREE.MeshPhongMaterial({
-        color: 0x1a1a1a,
-        specular: 0x444444,
-        shininess: 20,
-        emissive: 0x0a0a0a,
-      });
+      let tex1 = null, tex2 = null;
+      if (typeof tex1Base64 !== 'undefined' && typeof tex2Base64 !== 'undefined') {
+        const ddsLoader = new THREE.DDSLoader();
+        tex1 = ddsLoader.load('data:image/dds;base64,' + tex1Base64);
+        tex2 = ddsLoader.load('data:image/dds;base64,' + tex2Base64);
+      }
+
       obj.traverse(function (child) {
         if (child.isMesh) {
-          child.material = birdMat;
+          if (!tex1 || !tex2) {
+            // Fallback dark material
+            child.material = new THREE.MeshPhongMaterial({
+              color: 0x1a1a1a, specular: 0x444444, shininess: 20, emissive: 0x0a0a0a
+            });
+            return;
+          }
+          
+          const matName = child.material.name;
+          const newMat = new THREE.MeshPhongMaterial({
+            color: 0xffffff,
+            shininess: 10
+          });
+
+          if (matName === 'pasted__c8ed3c85_dds') {
+            newMat.map = tex1;
+          } else if (matName === 'pasted__d9b0490d_dds') {
+            newMat.map = tex2;
+          } else {
+             // Default if name doesn't match
+             newMat.map = tex1; 
+          }
+          child.material = newMat;
         }
       });
 
