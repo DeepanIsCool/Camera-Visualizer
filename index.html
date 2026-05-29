@@ -987,7 +987,7 @@
         <span class="label">Elevation</span>
         <span class="value" id="sun-el-val">35°</span>
       </div>
-      <input type="range" id="sun-elevation" min="5" max="85" step="1" value="35" />
+      <input type="range" id="sun-elevation" min="0" max="180" step="1" value="35" />
     </div>
   </div>
 
@@ -1330,11 +1330,10 @@
               float diff = max(dot(vNormal, uSunDir), 0.0);
               color *= 0.55 + 0.45 * diff;
 
-              // Specular highlight
-              vec3 viewDir = normalize(cameraPosition - vWorldPos);
-              vec3 halfDir = normalize(uSunDir + viewDir);
-              float spec = pow(max(dot(vNormal, halfDir), 0.0), 80.0);
-              color += vec3(1.0, 0.95, 0.85) * spec * 0.6;
+              // Specular highlight (view-independent: based on sun reflection off surface)
+              vec3 reflectDir = reflect(-uSunDir, vNormal);
+              float spec = pow(max(reflectDir.y, 0.0), 60.0);
+              color += vec3(1.0, 0.95, 0.85) * spec * 0.5;
 
               // Foam on wave peaks
               float foam = smoothstep(0.6, 1.1, vElevation);
