@@ -283,6 +283,65 @@
       border-color: #3b82f6;
       box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
     }
+
+    /* Left panel collapse */
+    .panel-body {
+      transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .panel-body.collapsed {
+      max-height: 0 !important;
+      opacity: 0;
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+      overflow: hidden;
+    }
+
+    .collapse-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: all 0.15s;
+      line-height: 1;
+    }
+
+    .collapse-btn:hover {
+      background: rgba(100, 116, 139, 0.2);
+      color: #e2e8f0;
+    }
+
+    /* Theme toggle */
+    .theme-btn {
+      position: fixed;
+      bottom: 80px;
+      right: 16px;
+      z-index: 20;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid rgba(100, 116, 139, 0.3);
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      color: #fbbf24;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .theme-btn:hover {
+      transform: scale(1.1);
+      border-color: #fbbf24;
+    }
   </style>
 </head>
 
@@ -291,7 +350,6 @@
 
   <!-- ===== LEFT PANEL: Camera Array Manager ===== -->
   <div class="ui-panel" style="top: 16px; left: 16px; width: 340px; max-height: 95vh">
-    <!-- Header -->
     <div style="
           padding: 12px 14px;
           border-bottom: 1px solid rgba(71, 85, 105, 0.3);
@@ -316,12 +374,15 @@
         </svg>
         Camera Array
       </h2>
-      <button id="add-cam-btn" class="btn-sm btn-primary">
-        <svg style="width: 12px; height: 12px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
-        </svg>
-        Add
-      </button>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button id="add-cam-btn" class="btn-sm btn-primary">
+          <svg style="width: 12px; height: 12px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+          </svg>
+          Add
+        </button>
+        <button id="collapse-panel-btn" class="collapse-btn" title="Collapse panel">▼</button>
+      </div>
     </div>
 
     <!-- Camera Tabs -->
@@ -336,14 +397,13 @@
         "></div>
 
     <!-- Active Camera Settings -->
-    <div style="
+    <div id="panel-body" class="panel-body" style="
           padding: 12px;
-          overflow-y: auto;
           display: flex;
           flex-direction: column;
           gap: 10px;
-          font-size: 12px;
-          flex: 1;
+          overflow-y: auto;
+          max-height: calc(95vh - 100px);
         ">
       <!-- Name & Color -->
       <div style="display: flex; justify-content: space-between; align-items: center">
@@ -423,8 +483,10 @@
           </div>
           <input type="range" id="hfov" min="15" max="140" value="66" />
         </div>
-        <div class="slider-row" style="background: rgba(30, 58, 95, 0.25); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.15)">
-          <div style="font-size: 9px; font-weight: 600; color: #60a5fa; margin-bottom: 4px">Focal Length → FOV Calculator</div>
+        <div class="slider-row"
+          style="background: rgba(30, 58, 95, 0.25); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.15)">
+          <div style="font-size: 9px; font-weight: 600; color: #60a5fa; margin-bottom: 4px">Focal Length → FOV
+            Calculator</div>
           <div style="display: flex; gap: 6px; align-items: center">
             <div style="flex: 1">
               <label style="font-size: 9px; color: #94a3b8; display: block; margin-bottom: 2px">Focal (mm)</label>
@@ -447,7 +509,8 @@
               </select>
             </div>
           </div>
-          <div id="fl-result" style="font-size: 9px; color: #64748b; margin-top: 3px">Enter focal length to auto-set FOV</div>
+          <div id="fl-result" style="font-size: 9px; color: #64748b; margin-top: 3px">Enter focal length to auto-set FOV
+          </div>
         </div>
         <div class="slider-row">
           <div class="slider-header">
@@ -470,8 +533,11 @@
         📋 Copy Config To…
       </button>
       <div id="copy-section" style="display: none" class="copy-section">
-        <div style="font-size: 10px; font-weight: 600; color: #93c5fd; margin-bottom: 6px">
-          Select target camera(s):
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size: 10px; font-weight: 600; color: #93c5fd">Select target camera(s):</div>
+          <label style="font-size:9px;color:#64748b;cursor:pointer;display:flex;align-items:center;gap:3px">
+            <input type="checkbox" id="copy-select-all" style="accent-color:#3b82f6;cursor:pointer"> Select All
+          </label>
         </div>
         <div id="copy-targets" style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px"></div>
         <div style="display: flex; gap: 6px; align-items: center">
@@ -521,63 +587,63 @@
       </svg>
       TARGET
     </div>
-      <div style="display: flex; gap: 10px">
-        <div style="flex: 1">
-          <div style="
+    <div style="display: flex; gap: 10px">
+      <div style="flex: 1">
+        <div style="
                 display: flex;
                 justify-content: space-between;
                 font-size: 10px;
                 font-weight: 600;
                 margin-bottom: 2px;
               ">
-            <span style="color: #94a3b8">X Position</span><span id="target-x-val"
-              style="font-family: monospace; color: #e2e8f0">0m</span>
-          </div>
-          <input type="range" id="target-x" min="-100" max="100" step="1" value="0" />
+          <span style="color: #94a3b8">X Position</span><span id="target-x-val"
+            style="font-family: monospace; color: #e2e8f0">0m</span>
         </div>
-        <div style="flex: 1">
-          <div style="
-                display: flex;
-                justify-content: space-between;
-                font-size: 10px;
-                font-weight: 600;
-                margin-bottom: 2px;
-              ">
-            <span style="color: #94a3b8">Y Position</span><span id="target-y-val"
-              style="font-family: monospace; color: #e2e8f0">-50m</span>
-          </div>
-          <input type="range" id="target-y" min="-150" max="50" step="1" value="-50" />
-        </div>
+        <input type="range" id="target-x" min="-100" max="100" step="1" value="0" />
       </div>
-      <div style="display: flex; gap: 10px">
-        <div style="flex: 1">
-          <div style="
+      <div style="flex: 1">
+        <div style="
                 display: flex;
                 justify-content: space-between;
                 font-size: 10px;
                 font-weight: 600;
                 margin-bottom: 2px;
               ">
-            <span style="color: #94a3b8">Z Height</span><span id="target-z-val"
-              style="font-family: monospace; color: #e2e8f0">0m</span>
-          </div>
-          <input type="range" id="target-z" min="0" max="50" step="0.5" value="0" />
+          <span style="color: #94a3b8">Y Position</span><span id="target-y-val"
+            style="font-family: monospace; color: #e2e8f0">-50m</span>
         </div>
-        <div style="flex: 1">
-          <div style="
-                display: flex;
-                justify-content: space-between;
-                font-size: 10px;
-                font-weight: 600;
-                margin-bottom: 2px;
-              ">
-            <span style="color: #94a3b8">Target Width</span><span id="target-w-val"
-              style="font-family: monospace; color: #e2e8f0">0.6m</span>
-          </div>
-          <input type="range" id="target-w" min="0.1" max="2.0" step="0.1" value="0.6" />
-        </div>
+        <input type="range" id="target-y" min="-150" max="50" step="1" value="-50" />
       </div>
     </div>
+    <div style="display: flex; gap: 10px">
+      <div style="flex: 1">
+        <div style="
+                display: flex;
+                justify-content: space-between;
+                font-size: 10px;
+                font-weight: 600;
+                margin-bottom: 2px;
+              ">
+          <span style="color: #94a3b8">Z Height</span><span id="target-z-val"
+            style="font-family: monospace; color: #e2e8f0">0m</span>
+        </div>
+        <input type="range" id="target-z" min="0" max="50" step="0.5" value="0" />
+      </div>
+      <div style="flex: 1">
+        <div style="
+                display: flex;
+                justify-content: space-between;
+                font-size: 10px;
+                font-weight: 600;
+                margin-bottom: 2px;
+              ">
+          <span style="color: #94a3b8">Target Width</span><span id="target-w-val"
+            style="font-family: monospace; color: #e2e8f0">0.6m</span>
+        </div>
+        <input type="range" id="target-w" min="0.1" max="2.0" step="0.1" value="0.6" />
+      </div>
+    </div>
+  </div>
   </div>
 
   <!-- ===== RIGHT PANEL: Metrics & AI ===== -->
@@ -610,6 +676,14 @@
         <span>PPM (px/meter):</span>
         <span id="out-ppm" style="font-family: monospace; font-weight: 600; color: #e2e8f0">--</span>
       </div>
+      <div id="best-cam-info" style="
+            font-size: 10px;
+            color: #64748b;
+            text-align: center;
+            padding: 4px;
+            border-radius: 4px;
+            display: none;
+          "></div>
 
       <!-- Detection Viability -->
       <div id="viability-box" style="
@@ -683,6 +757,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Theme toggle -->
+  <button id="theme-toggle" class="theme-btn" title="Toggle light/dark mode">☀️</button>
 
   <script type="module">
     // ================================================================
@@ -771,10 +848,16 @@
       outStatus: document.getElementById("out-status"),
       outSafety: document.getElementById("out-safety"),
       viabilityBox: document.getElementById("viability-box"),
+      bestCamInfo: document.getElementById("best-cam-info"),
 
       focalLength: document.getElementById("focal-length"),
       sensorSize: document.getElementById("sensor-size"),
       flResult: document.getElementById("fl-result"),
+
+      collapseBtn: document.getElementById("collapse-panel-btn"),
+      panelBody: document.getElementById("panel-body"),
+      themeToggle: document.getElementById("theme-toggle"),
+      copySelectAll: document.getElementById("copy-select-all"),
 
       aiBtn: document.getElementById("ai-btn"),
       aiOutput: document.getElementById("ai-output"),
@@ -1352,13 +1435,13 @@
 
       const color = new THREE.Color(hexColor);
       lines.material.color = color;
-      lines.material.opacity = isActive ? 1.0 : 0.7;
+      lines.material.opacity = 1.0;
 
       plane.material.color = color;
-      plane.material.opacity = isActive ? 0.22 : 0.12;
+      plane.material.opacity = isActive ? 0.35 : 0.2;
 
       planeEdge.material.color = color;
-      planeEdge.material.opacity = isActive ? 1.0 : 0.6;
+      planeEdge.material.opacity = 1.0;
 
       // Update frustum side walls
       const walls = group.getObjectByName("walls");
@@ -1380,7 +1463,7 @@
         );
         walls.geometry.attributes.position.needsUpdate = true;
         walls.material.color = color;
-        walls.material.opacity = isActive ? 0.12 : 0.06;
+        walls.material.opacity = isActive ? 0.25 : 0.15;
       }
 
       // Color camera accents to match
@@ -1470,11 +1553,19 @@
         const label = document.createElement("label");
         label.style.cssText =
           "display:flex;align-items:center;gap:6px;font-size:11px;color:#cbd5e1;cursor:pointer;padding:3px 0;";
-        label.innerHTML = `<input type="checkbox" value="${cam.id}" checked style="accent-color:#3b82f6;cursor:pointer;">
+        label.innerHTML = `<input type="checkbox" value="${cam.id}" checked style="accent-color:#3b82f6;cursor:pointer;" class="copy-cam-cb">
             <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${cam.color};box-shadow:0 0 4px ${cam.color}"></span>
             ${cam.name}`;
         els.copyTargets.appendChild(label);
       });
+      // Sync select-all checkbox
+      if (els.copySelectAll) {
+        els.copySelectAll.checked = true;
+        els.copySelectAll.onchange = () => {
+          const cbs = els.copyTargets.querySelectorAll('.copy-cam-cb');
+          cbs.forEach(cb => cb.checked = els.copySelectAll.checked);
+        };
+      }
     }
 
     // ================================================================
@@ -1629,9 +1720,80 @@
         }, 1200);
       };
 
+      // Collapse panel
+      els.collapseBtn.onclick = () => {
+        const body = els.panelBody;
+        const isCollapsed = body.classList.toggle('collapsed');
+        els.collapseBtn.innerText = isCollapsed ? '▶' : '▼';
+        els.collapseBtn.title = isCollapsed ? 'Expand panel' : 'Collapse panel';
+      };
+
+      // Theme toggle
+      let isDark = true;
+      els.themeToggle.onclick = () => {
+        isDark = !isDark;
+        els.themeToggle.innerText = isDark ? '☀️' : '🌙';
+        applyTheme(isDark);
+      };
+
       // AI
       els.aiBtn.onclick = generateAIRecommendations;
       window.addEventListener("resize", onWindowResize, false);
+    }
+
+    // ================================================================
+    // THEME
+    // ================================================================
+    function applyTheme(dark) {
+      const skyCanvas = document.createElement("canvas");
+      skyCanvas.width = 2;
+      skyCanvas.height = 512;
+      const skyCtx = skyCanvas.getContext("2d");
+      const grad = skyCtx.createLinearGradient(0, 0, 0, 512);
+      if (dark) {
+        grad.addColorStop(0, "#1a365d");
+        grad.addColorStop(0.3, "#2d5a87");
+        grad.addColorStop(0.6, "#4a7fb5");
+        grad.addColorStop(0.85, "#7db8d4");
+        grad.addColorStop(1, "#a8d4e6");
+        scene.fog = new THREE.FogExp2(0x3a6f8f, 0.004);
+        document.body.style.backgroundColor = "#0a1628";
+      } else {
+        grad.addColorStop(0, "#4a90d9");
+        grad.addColorStop(0.3, "#7ab8e8");
+        grad.addColorStop(0.6, "#a8d8f0");
+        grad.addColorStop(0.85, "#d0eaf8");
+        grad.addColorStop(1, "#e8f4fc");
+        scene.fog = new THREE.FogExp2(0x8ec5e0, 0.003);
+        document.body.style.backgroundColor = "#c0dff0";
+      }
+      skyCtx.fillStyle = grad;
+      skyCtx.fillRect(0, 0, 2, 512);
+      scene.background = new THREE.CanvasTexture(skyCanvas);
+
+      // Update water color
+      if (waterMaterial) {
+        if (dark) {
+          waterMaterial.uniforms.uDeepColor.value.set(0x0a3d5c);
+          waterMaterial.uniforms.uSurfaceColor.value.set(0x1a6e8e);
+          waterMaterial.uniforms.uFoamColor.value.set(0x8ecae6);
+        } else {
+          waterMaterial.uniforms.uDeepColor.value.set(0x2980b9);
+          waterMaterial.uniforms.uSurfaceColor.value.set(0x5dade2);
+          waterMaterial.uniforms.uFoamColor.value.set(0xd4efdf);
+        }
+      }
+
+      // Update UI panels
+      document.querySelectorAll('.ui-panel').forEach(p => {
+        if (dark) {
+          p.style.background = 'rgba(15, 23, 42, 0.92)';
+          p.style.borderColor = 'rgba(100, 116, 139, 0.25)';
+        } else {
+          p.style.background = 'rgba(255, 255, 255, 0.88)';
+          p.style.borderColor = 'rgba(148, 163, 184, 0.35)';
+        }
+      });
     }
 
     // ================================================================
@@ -1639,13 +1801,16 @@
     // ================================================================
     function updateAll() {
       // Update target marker position (z = height)
-      // User coords: x → Three.js X, z → Three.js Y (up), y → Three.js Z
       targetGroup.position.set(targetState.x, targetState.z, targetState.y);
 
       let activePixels = 0;
       let activePpm = 0;
       let targetInView = false;
       let distToTarget = 0;
+      // Track best camera that can see the target
+      let bestPixels = 0;
+      let bestCamName = "";
+      let bestCamPpm = 0;
 
       cameraState.forEach((cam) => {
         const isActive = cam.id === activeCamId;
@@ -1657,85 +1822,88 @@
           scene.add(group);
         }
 
-        // Position: cam.x → Three.js X, cam.z → Three.js Y (height), cam.y → Three.js Z
         group.position.set(cam.x, cam.z + 0.5, cam.y);
-
-        // Rotation: pan around Y axis, tilt around X axis. Order YXZ.
         group.rotation.set(
           THREE.MathUtils.degToRad(cam.tilt),
           THREE.MathUtils.degToRad(-cam.pan),
           0,
         );
 
-        // FOV calculations
         const aspectRatio = cam.hRes / cam.vRes;
         const hFovRad = THREE.MathUtils.degToRad(cam.hFovDeg);
         const vFovRad = 2 * Math.atan(Math.tan(hFovRad / 2) / aspectRatio);
 
-        updateFrustumVisuals(
-          group,
-          hFovRad,
-          vFovRad,
-          cam.range,
-          cam.color,
-          isActive,
-        );
+        updateFrustumVisuals(group, hFovRad, vFovRad, cam.range, cam.color, isActive);
 
-        // Detection math for active camera
-        if (isActive) {
-          const camWorldPos = new THREE.Vector3(
-            cam.x,
-            cam.z + 0.5,
-            cam.y,
-          );
-          const targetWorldPos = new THREE.Vector3(
-            targetState.x,
-            targetState.z + 0.5,
-            targetState.y,
-          );
-          distToTarget = camWorldPos.distanceTo(targetWorldPos);
+        // Detection math for EVERY camera (not just active)
+        const camWorldPos = new THREE.Vector3(cam.x, cam.z + 0.5, cam.y);
+        const targetWorldPos = new THREE.Vector3(targetState.x, targetState.z + 0.5, targetState.y);
+        const dist = camWorldPos.distanceTo(targetWorldPos);
 
-          // Transform target to camera local space
-          const localTarget = group.worldToLocal(targetWorldPos.clone());
+        if (isActive) distToTarget = dist;
 
-          // In local space, -Z is forward
-          if (localTarget.z < 0 && distToTarget > 0) {
-            const angleH = Math.abs(
-              Math.atan2(localTarget.x, -localTarget.z),
-            );
-            const angleV = Math.abs(
-              Math.atan2(localTarget.y, -localTarget.z),
-            );
-            if (angleH <= hFovRad / 2 && angleV <= vFovRad / 2) {
+        const localTarget = group.worldToLocal(targetWorldPos.clone());
+        if (localTarget.z < 0 && dist > 0) {
+          const angleH = Math.abs(Math.atan2(localTarget.x, -localTarget.z));
+          const angleV = Math.abs(Math.atan2(localTarget.y, -localTarget.z));
+          if (angleH <= hFovRad / 2 && angleV <= vFovRad / 2) {
+            const depthAlongAxis = Math.abs(localTarget.z);
+            const frameWidthAtTarget = 2 * depthAlongAxis * Math.tan(hFovRad / 2);
+            const ppm = cam.hRes / frameWidthAtTarget;
+            const pixels = ppm * targetState.width;
+
+            // Track active camera result
+            if (isActive) {
               targetInView = true;
-              // Use depth along optical axis (not Euclidean distance)
-              // for correct rectilinear projection PPM
-              const depthAlongAxis = Math.abs(localTarget.z);
-              const frameWidthAtTarget =
-                2 * depthAlongAxis * Math.tan(hFovRad / 2);
-              activePpm = cam.hRes / frameWidthAtTarget;
-              activePixels = activePpm * targetState.width;
+              activePixels = pixels;
+              activePpm = ppm;
+            }
+            // Track best across ALL cameras
+            if (pixels > bestPixels) {
+              bestPixels = pixels;
+              bestCamName = cam.name;
+              bestCamPpm = ppm;
             }
           }
         }
       });
 
+      // If active camera can't see target, show best camera that can
+      let displayPixels = activePixels;
+      let displayPpm = activePpm;
+      let showBestCam = false;
+
+      if (!targetInView && bestPixels > 0) {
+        displayPixels = bestPixels;
+        displayPpm = bestCamPpm;
+        showBestCam = true;
+      }
+
       // Update metrics UI
       els.outActualDist.innerText = distToTarget.toFixed(1) + " m";
-      els.outPpm.innerText = activePpm > 0 ? activePpm.toFixed(1) + " px/m" : "--";
+      els.outPpm.innerText = displayPpm > 0 ? displayPpm.toFixed(1) + " px/m" : "--";
 
-      if (!targetInView) {
+      // Show which camera sees the target if active doesn't
+      if (showBestCam) {
+        els.bestCamInfo.style.display = "block";
+        els.bestCamInfo.style.background = "rgba(59, 130, 246, 0.15)";
+        els.bestCamInfo.style.color = "#93c5fd";
+        els.bestCamInfo.innerHTML = `📷 Showing pixels from <b>${bestCamName}</b> (best view)`;
+      } else {
+        els.bestCamInfo.style.display = "none";
+      }
+
+      if (displayPixels <= 0) {
         els.outPixels.innerText = "0 px";
         els.outPixels.style.color = "#64748b";
         els.viabilityBox.style.borderColor = "#334155";
         els.viabilityBox.style.background = "rgba(30, 41, 59, 0.6)";
-        els.outStatus.innerText = "TARGET OUT OF VIEW";
+        els.outStatus.innerText = "TARGET OUT OF ALL CAMERAS' VIEW";
         els.outStatus.style.color = "#64748b";
         els.outSafety.innerText = "";
       } else {
-        const roundedPx = Math.round(activePixels);
+        const roundedPx = Math.round(displayPixels);
         els.outPixels.innerText = roundedPx + " px";
-        // Safety margin: recommend 1.5x minimum
         const safetyRatio = roundedPx / 24;
         if (roundedPx < 15) {
           els.outPixels.style.color = "#f87171";
