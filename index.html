@@ -10,6 +10,9 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+  <!-- Embedded 3D Model data for local file:// usage without CORS -->
+  <script src="cormorant_data.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     * {
@@ -316,18 +319,18 @@
       color: #e2e8f0;
     }
 
-    /* Theme toggle */
+    /* Theme toggle - positioned top center */
     .theme-btn {
       position: fixed;
       top: 16px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 100;
-      width: 42px;
-      height: 42px;
+      width: 38px;
+      height: 38px;
       border-radius: 50%;
       border: 1px solid rgba(100, 116, 139, 0.3);
-      background: rgba(15, 23, 42, 0.85);
+      background: rgba(15, 23, 42, 0.75);
       backdrop-filter: blur(12px);
       color: #e2e8f0;
       font-size: 16px;
@@ -335,13 +338,15 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       padding: 0;
     }
     .theme-btn:hover {
-      transform: translateX(-50%) scale(1.12);
-      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+      transform: translateX(-50%) scale(1.08);
+      background: rgba(30, 41, 59, 0.85);
+      border-color: rgba(96, 165, 250, 0.5);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
     }
 
     /* ========================================
@@ -398,15 +403,15 @@
 
     /* Section labels */
     body.light-mode .section-label {
-      color: #64748b !important;
+      color: #475569 !important;
     }
 
     /* Slider labels & values */
     body.light-mode .slider-header .label {
-      color: #64748b !important;
+      color: #475569 !important;
     }
     body.light-mode .slider-header .value {
-      color: #1e293b !important;
+      color: #0f172a !important;
     }
 
     /* Headings */
@@ -415,31 +420,39 @@
       color: #1e293b !important;
     }
 
-    /* Slider track */
+    /* Slider track & thumb styling */
+    /* Slider track & thumb styling */
     body.light-mode input[type="range"] {
-      background-color: #e2e8f0;
+      background: rgba(203, 213, 225, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+    body.light-mode input[type="range"]:hover {
+      background: rgba(148, 163, 184, 0.4);
     }
     body.light-mode input[type="range"]::-webkit-slider-thumb {
-      border-color: #ffffff;
-      box-shadow:
-        0 0 4px rgba(59, 130, 246, 0.4),
-        0 1px 3px rgba(0, 0, 0, 0.15);
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+    }
+    body.light-mode input[type="range"]::-webkit-slider-thumb:hover {
+      background: linear-gradient(135deg, #60a5fa, #3b82f6);
+      transform: scale(1.15);
     }
 
-    /* Select dropdown */
+    /* Input & select elements inside panels */
+    body.light-mode input[type="number"],
     body.light-mode select {
-      background: #f8fafc;
-      border-color: #cbd5e1;
-      color: #1e293b;
+      background: #ffffff !important;
+      border: 1px solid #cbd5e1 !important;
+      color: #0f172a !important;
     }
-    body.light-mode select:focus {
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+    body.light-mode input[type="number"]::placeholder {
+      color: #94a3b8 !important;
     }
 
     /* Joystick labels */
     body.light-mode .joystick-labels {
-      color: #64748b !important;
+      color: #475569 !important;
     }
 
     /* Buttons */
@@ -463,12 +476,12 @@
     /* Copy section */
     body.light-mode .copy-section {
       background: rgba(248, 250, 252, 0.95);
-      border-color: rgba(59, 130, 246, 0.15);
+      border-color: rgba(203, 213, 225, 0.6);
     }
 
     /* Collapse button */
     body.light-mode .collapse-btn {
-      color: #64748b !important;
+      color: #475569 !important;
     }
     body.light-mode .collapse-btn:hover {
       background: rgba(148, 163, 184, 0.15);
@@ -477,34 +490,64 @@
 
     /* Theme button in light mode */
     body.light-mode .theme-btn {
-      background: rgba(255, 255, 255, 0.92) !important;
-      color: #475569 !important;
-      border-color: rgba(203, 213, 225, 0.6) !important;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+      background: rgba(255, 255, 255, 0.85) !important;
+      color: #334155 !important;
+      border-color: rgba(203, 213, 225, 0.8) !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
     }
     body.light-mode .theme-btn:hover {
-      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12) !important;
+      background: rgba(241, 245, 249, 0.95) !important;
+      transform: translateX(-50%) scale(1.08) !important;
+      border-color: rgba(59, 130, 246, 0.5) !important;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12) !important;
     }
 
-    /* Target panel inline-styled spans */
-    body.light-mode span[style*="color: #94a3b8"] {
-      color: #64748b !important;
+    /* Robust selector overrides for inline style colors */
+    body.light-mode [style*="color: #94a3b8"],
+    body.light-mode [style*="color:#94a3b8"],
+    body.light-mode [style*="color: rgb(148, 163, 184)"] {
+      color: #475569 !important;
     }
-    body.light-mode span[style*="color: #e2e8f0"] {
-      color: #1e293b !important;
+    body.light-mode [style*="color: #e2e8f0"],
+    body.light-mode [style*="color:#e2e8f0"],
+    body.light-mode [style*="color: rgb(226, 232, 240)"] {
+      color: #0f172a !important;
+    }
+    body.light-mode [style*="color: #cbd5e1"],
+    body.light-mode [style*="color:#cbd5e1"],
+    body.light-mode [style*="color: rgb(203, 213, 225)"] {
+      color: #334155 !important;
+    }
+    body.light-mode [style*="color: #a5b4fc"],
+    body.light-mode [style*="color:#a5b4fc"],
+    body.light-mode [style*="color: rgb(165, 180, 252)"] {
+      color: #4f46e5 !important;
+    }
+    body.light-mode [style*="color: #64748b"],
+    body.light-mode [style*="color:#64748b"],
+    body.light-mode [style*="color: rgb(100, 116, 139)"] {
+      color: #475569 !important;
+    }
+    body.light-mode [style*="color: #60a5fa"],
+    body.light-mode [style*="color:#60a5fa"],
+    body.light-mode [style*="color: rgb(96, 165, 250)"] {
+      color: #1d4ed8 !important;
+    }
+    body.light-mode [style*="color: #fbbf24"],
+    body.light-mode [style*="color:#fbbf24"],
+    body.light-mode [style*="color: rgb(251, 191, 36)"] {
+      color: #b45309 !important;
     }
 
-    /* Right panel metric labels */
-    body.light-mode div[style*="color: #94a3b8"] {
-      color: #64748b !important;
-    }
-    body.light-mode span[style*="font-weight: 600"][style*="color: #e2e8f0"] {
-      color: #1e293b !important;
+    /* Calculator background box override in light mode */
+    body.light-mode div[style*="background: rgba(30, 58, 95"] {
+      background: rgba(59, 130, 246, 0.05) !important;
+      border-color: rgba(59, 130, 246, 0.15) !important;
     }
 
     /* Focal length result */
     body.light-mode #fl-result {
-      color: #64748b !important;
+      color: #475569 !important;
     }
 
     /* Scrollbar light */
@@ -525,7 +568,6 @@
       background: rgba(248, 250, 252, 0.9) !important;
     }
 
-    /* AI section */
     body.light-mode div[style*="background: rgba(79, 70, 229"] {
       background: rgba(99, 102, 241, 0.06) !important;
       border-color: rgba(99, 102, 241, 0.15) !important;
@@ -534,6 +576,7 @@
 </head>
 
 <body>
+  <input type="file" id="model-file-input" accept=".obj" style="display: none;" />
   <div id="canvas-container"></div>
 
   <!-- Theme Toggle (fixed, top center) -->
@@ -842,6 +885,15 @@
           <input type="range" id="target-w" min="0.1" max="2.0" step="0.1" value="0.6" />
         </div>
       </div>
+      <!-- CORS/Manual Model Loader Helper -->
+      <div id="model-cors-helper" style="display: none; font-size: 9px; color: #f87171; border-top: 1px solid rgba(248, 113, 113, 0.15); padding-top: 5px; margin-top: 2px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span>⚠️ CORS blocked automatic 3D model load.</span>
+          <button id="model-load-btn" class="btn-sm btn-ghost" style="padding: 2px 6px; font-size: 9px; height: 18px; border-color: rgba(248,113,113,0.3); color: #f87171;" onclick="event.preventDefault(); document.getElementById('model-file-input').click();">
+            Choose cormorant.obj
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -987,7 +1039,7 @@
         <span class="label">Elevation</span>
         <span class="value" id="sun-el-val">35°</span>
       </div>
-      <input type="range" id="sun-elevation" min="0" max="180" step="1" value="35" />
+      <input type="range" id="sun-elevation" min="0" max="360" step="1" value="35" />
     </div>
   </div>
 
@@ -1330,10 +1382,11 @@
               float diff = max(dot(vNormal, uSunDir), 0.0);
               color *= 0.55 + 0.45 * diff;
 
-              // Specular highlight (view-independent: based on sun reflection off surface)
-              vec3 reflectDir = reflect(-uSunDir, vNormal);
-              float spec = pow(max(reflectDir.y, 0.0), 60.0);
-              color += vec3(1.0, 0.95, 0.85) * spec * 0.5;
+              // Specular highlight (view-dependent: reacts to camera rotation)
+              vec3 viewDir = normalize(cameraPosition - vWorldPos);
+              vec3 halfVector = normalize(uSunDir + viewDir);
+              float spec = pow(max(dot(vNormal, halfVector), 0.0), 120.0);
+              color += vec3(1.0, 0.95, 0.85) * spec * 0.8;
 
               // Foam on wave peaks
               float foam = smoothstep(0.6, 1.1, vElevation);
@@ -1428,6 +1481,103 @@
     // ================================================================
     // TARGET MARKER (Highly Visible)
     // ================================================================
+    // Helper to setup/update the bird model on load
+    function setupBirdModel(obj) {
+      if (!targetGroup) return;
+      // Remove any existing birdModel or diamond
+      const oldBird = targetGroup.getObjectByName("birdModel");
+      if (oldBird) targetGroup.remove(oldBird);
+      const oldDiamond = targetGroup.getObjectByName("diamond");
+      if (oldDiamond) targetGroup.remove(oldDiamond);
+
+      // Dark material for cormorant (they're black birds)
+      const birdMat = new THREE.MeshPhongMaterial({
+        color: 0x1a1a1a,
+        specular: 0x444444,
+        shininess: 20,
+        emissive: 0x0a0a0a,
+      });
+      obj.traverse(function (child) {
+        if (child.isMesh) {
+          child.material = birdMat;
+        }
+      });
+
+      // Compute bounding box
+      const box = new THREE.Box3().setFromObject(obj);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const maxDim = Math.max(size.x, size.y, size.z);
+      obj.userData.originalMaxDim = maxDim;
+      obj.userData.originalCenter = new THREE.Vector3();
+      box.getCenter(obj.userData.originalCenter);
+
+      obj.name = "birdModel";
+      targetGroup.add(obj);
+
+      // Hide CORS warning
+      const helper = document.getElementById("model-cors-helper");
+      if (helper) helper.style.display = "none";
+
+      updateTargetVisualScale();
+    }
+
+    // Show manual loading helper when auto loading fails
+    function showModelLoadError() {
+      const helper = document.getElementById("model-cors-helper");
+      if (helper) helper.style.display = "block";
+    }
+
+    // Setup fallback diamond marker when model isn't loaded
+    function useFallbackMarker() {
+      if (!targetGroup) return;
+      const oldBird = targetGroup.getObjectByName("birdModel");
+      if (oldBird) targetGroup.remove(oldBird);
+      const oldDiamond = targetGroup.getObjectByName("diamond");
+      if (oldDiamond) targetGroup.remove(oldDiamond);
+
+      const diamondGeo = new THREE.OctahedronGeometry(0.8, 0);
+      const diamondMat = new THREE.MeshPhongMaterial({
+        color: 0xff2222,
+        emissive: 0xff4444,
+        emissiveIntensity: 0.6,
+        transparent: true,
+        opacity: 0.95,
+      });
+      const diamond = new THREE.Mesh(diamondGeo, diamondMat);
+      diamond.position.y = 3.5;
+      diamond.name = "diamond";
+      targetGroup.add(diamond);
+
+      updateTargetVisualScale();
+    }
+
+    // Dynamically scale target markers based on the Target Width slider
+    function updateTargetVisualScale() {
+      if (!targetGroup) return;
+
+      const birdModel = targetGroup.getObjectByName("birdModel");
+      if (birdModel && birdModel.userData.originalMaxDim) {
+        // Multiply by 10 for visibility matching original developer's scale
+        const scale = (targetState.width / birdModel.userData.originalMaxDim) * 10;
+        birdModel.scale.set(scale, scale, scale);
+        
+        const center = birdModel.userData.originalCenter;
+        birdModel.position.set(
+          -center.x * scale,
+          -center.y * scale + 1.5 * (targetState.width / 0.6),
+          -center.z * scale
+        );
+      }
+
+      const diamond = targetGroup.getObjectByName("diamond");
+      if (diamond) {
+        const s = targetState.width / 0.6;
+        diamond.scale.setScalar(s);
+        diamond.position.y = 3.5 * s;
+      }
+    }
+
     function createTargetMarker() {
       targetGroup = new THREE.Group();
 
@@ -1444,29 +1594,21 @@
       beam.name = "beam";
       targetGroup.add(beam);
 
-      // Pole
-      const poleGeo = new THREE.CylinderGeometry(0.08, 0.08, 3, 8);
-      const poleMat = new THREE.MeshPhongMaterial({
-        color: 0xcc0000,
-        emissive: 0x660000,
-      });
-      const pole = new THREE.Mesh(poleGeo, poleMat);
-      pole.position.y = 1.5;
-      targetGroup.add(pole);
-
-      // Diamond (octahedron) at top
-      const diamondGeo = new THREE.OctahedronGeometry(0.8, 0);
-      const diamondMat = new THREE.MeshPhongMaterial({
-        color: 0xff2222,
-        emissive: 0xff4444,
-        emissiveIntensity: 0.6,
-        transparent: true,
-        opacity: 0.95,
-      });
-      const diamond = new THREE.Mesh(diamondGeo, diamondMat);
-      diamond.position.y = 3.5;
-      diamond.name = "diamond";
-      targetGroup.add(diamond);
+      // Load the embedded 3D model automatically
+      try {
+        if (typeof cormorantObjBase64 !== 'undefined') {
+          const loader = new THREE.OBJLoader();
+          const objText = atob(cormorantObjBase64);
+          const obj = loader.parse(objText);
+          setupBirdModel(obj);
+        } else {
+          throw new Error('Embedded model not found.');
+        }
+      } catch (err) {
+        console.error('Failed to parse embedded bird model, using fallback marker', err);
+        showModelLoadError();
+        useFallbackMarker();
+      }
 
       // Ground ring 1
       const ring1Geo = new THREE.RingGeometry(1.2, 1.5, 32);
@@ -2055,6 +2197,30 @@
 
       // AI
       els.aiBtn.onclick = generateAIRecommendations;
+
+      // Local OBJ file loader listener
+      const fileInput = document.getElementById("model-file-input");
+      if (fileInput) {
+        fileInput.onchange = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            const contents = evt.target.result;
+            try {
+              const loader = new THREE.OBJLoader();
+              const obj = loader.parse(contents);
+              setupBirdModel(obj);
+            } catch (err) {
+              console.error("Failed to parse local OBJ file", err);
+              alert("Error parsing OBJ file. Make sure it is a valid Wavefront OBJ.");
+            }
+          };
+          reader.readAsText(file);
+        };
+      }
+
       window.addEventListener("resize", onWindowResize, false);
     }
 
@@ -2130,6 +2296,9 @@
     function updateAll() {
       // Update target marker position (z = height)
       targetGroup.position.set(targetState.x, targetState.z, targetState.y);
+
+      // Update target marker visual scale
+      updateTargetVisualScale();
 
       let activePixels = 0;
       let activePpm = 0;
@@ -2550,8 +2719,10 @@
         if (diamond) {
           diamond.rotation.y = elapsed * 1.5;
           diamond.rotation.z = Math.sin(elapsed * 2) * 0.15;
-          const pulse = 1 + Math.sin(elapsed * 3) * 0.12;
+          const baseScale = targetState.width / 0.6;
+          const pulse = baseScale * (1 + Math.sin(elapsed * 3) * 0.12);
           diamond.scale.setScalar(pulse);
+          diamond.position.y = 3.5 * baseScale;
         }
 
         const ring1 = targetGroup.getObjectByName("ring1");
