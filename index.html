@@ -423,6 +423,32 @@
           </div>
           <input type="range" id="hfov" min="15" max="140" value="66" />
         </div>
+        <div class="slider-row" style="background: rgba(30, 58, 95, 0.25); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.15)">
+          <div style="font-size: 9px; font-weight: 600; color: #60a5fa; margin-bottom: 4px">Focal Length → FOV Calculator</div>
+          <div style="display: flex; gap: 6px; align-items: center">
+            <div style="flex: 1">
+              <label style="font-size: 9px; color: #94a3b8; display: block; margin-bottom: 2px">Focal (mm)</label>
+              <input type="number" id="focal-length" min="1" max="200" step="0.5" value="" placeholder="e.g. 6"
+                style="width: 100%; padding: 3px 5px; font-size: 11px; background: rgba(15,23,42,0.6); border: 1px solid #334155; border-radius: 4px; color: #e2e8f0" />
+            </div>
+            <div style="flex: 1">
+              <label style="font-size: 9px; color: #94a3b8; display: block; margin-bottom: 2px">Sensor Width</label>
+              <select id="sensor-size" style="width: 100%; padding: 3px 5px; font-size: 10px">
+                <option value="3.68">1/4" (3.68mm)</option>
+                <option value="4.54">1/3" (4.54mm)</option>
+                <option value="5.37">1/2.7" (5.37mm)</option>
+                <option value="6.17" selected>1/2.3" (6.17mm)</option>
+                <option value="6.4">1/2" (6.4mm)</option>
+                <option value="7.18">1/1.8" (7.18mm)</option>
+                <option value="8.8">1/1.2" (8.8mm)</option>
+                <option value="13.2">1" (13.2mm)</option>
+                <option value="22.2">APS-C (22.2mm)</option>
+                <option value="36">Full Frame (36mm)</option>
+              </select>
+            </div>
+          </div>
+          <div id="fl-result" style="font-size: 9px; color: #64748b; margin-top: 3px">Enter focal length to auto-set FOV</div>
+        </div>
         <div class="slider-row">
           <div class="slider-header">
             <span class="label">Visualizer Range</span><span id="range-val" class="value">60m</span>
@@ -495,7 +521,6 @@
       </svg>
       TARGET
     </div>
-    <div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
       <div style="display: flex; gap: 10px">
         <div style="flex: 1">
           <div style="
@@ -524,18 +549,33 @@
           <input type="range" id="target-y" min="-150" max="50" step="1" value="-50" />
         </div>
       </div>
-      <div>
-        <div style="
-              display: flex;
-              justify-content: space-between;
-              font-size: 10px;
-              font-weight: 600;
-              margin-bottom: 2px;
-            ">
-          <span style="color: #94a3b8">Target Width</span><span id="target-w-val"
-            style="font-family: monospace; color: #e2e8f0">0.6m (2ft)</span>
+      <div style="display: flex; gap: 10px">
+        <div style="flex: 1">
+          <div style="
+                display: flex;
+                justify-content: space-between;
+                font-size: 10px;
+                font-weight: 600;
+                margin-bottom: 2px;
+              ">
+            <span style="color: #94a3b8">Z Height</span><span id="target-z-val"
+              style="font-family: monospace; color: #e2e8f0">0m</span>
+          </div>
+          <input type="range" id="target-z" min="0" max="50" step="0.5" value="0" />
         </div>
-        <input type="range" id="target-w" min="0.1" max="2.0" step="0.1" value="0.6" />
+        <div style="flex: 1">
+          <div style="
+                display: flex;
+                justify-content: space-between;
+                font-size: 10px;
+                font-weight: 600;
+                margin-bottom: 2px;
+              ">
+            <span style="color: #94a3b8">Target Width</span><span id="target-w-val"
+              style="font-family: monospace; color: #e2e8f0">0.6m</span>
+          </div>
+          <input type="range" id="target-w" min="0.1" max="2.0" step="0.1" value="0.6" />
+        </div>
       </div>
     </div>
   </div>
@@ -561,6 +601,14 @@
           ">
         <span>Dist. to Target:</span>
         <span id="out-actual-dist" style="font-family: monospace; font-weight: 600; color: #e2e8f0">--</span>
+      </div>
+      <div style="
+            display: flex;
+            justify-content: space-between;
+            color: #94a3b8;
+          ">
+        <span>PPM (px/meter):</span>
+        <span id="out-ppm" style="font-family: monospace; font-weight: 600; color: #e2e8f0">--</span>
       </div>
 
       <!-- Detection Viability -->
@@ -591,6 +639,7 @@
           -- px
         </p>
         <p id="out-status" style="text-align: center; font-weight: 700; font-size: 11px"></p>
+        <p id="out-safety" style="text-align: center; font-size: 9px; color: #64748b; margin-top: 4px"></p>
       </div>
 
       <!-- AI Features -->
@@ -666,7 +715,7 @@
     ];
     let nextCamId = 2;
     let activeCamId = 1;
-    let targetState = { x: 0, y: -50, width: 0.6 };
+    let targetState = { x: 0, y: -50, z: 0, width: 0.6 };
     const apiKey = "";
 
     // ================================================================
@@ -709,15 +758,23 @@
 
       tarX: document.getElementById("target-x"),
       tarY: document.getElementById("target-y"),
+      tarZ: document.getElementById("target-z"),
       tarW: document.getElementById("target-w"),
       valTarX: document.getElementById("target-x-val"),
       valTarY: document.getElementById("target-y-val"),
+      valTarZ: document.getElementById("target-z-val"),
       valTarW: document.getElementById("target-w-val"),
 
       outActualDist: document.getElementById("out-actual-dist"),
+      outPpm: document.getElementById("out-ppm"),
       outPixels: document.getElementById("out-pixels"),
       outStatus: document.getElementById("out-status"),
+      outSafety: document.getElementById("out-safety"),
       viabilityBox: document.getElementById("viability-box"),
+
+      focalLength: document.getElementById("focal-length"),
+      sensorSize: document.getElementById("sensor-size"),
+      flResult: document.getElementById("fl-result"),
 
       aiBtn: document.getElementById("ai-btn"),
       aiOutput: document.getElementById("ai-output"),
@@ -1480,6 +1537,22 @@
       els.range.oninput = (e) =>
         updateActive("range", e.target.value, els.valRange, "m");
 
+      // Focal length → FOV calculator
+      function computeFovFromFocal() {
+        const fl = parseFloat(els.focalLength.value);
+        const sw = parseFloat(els.sensorSize.value);
+        if (!fl || fl <= 0 || !sw) return;
+        const hfovDeg = Math.round(2 * Math.atan(sw / (2 * fl)) * (180 / Math.PI));
+        const clampedFov = Math.max(15, Math.min(140, hfovDeg));
+        els.hfov.value = clampedFov;
+        els.valHfov.innerText = clampedFov + "°";
+        els.flResult.innerText = `${fl}mm on ${sw}mm sensor → ${hfovDeg}° HFOV`;
+        els.flResult.style.color = "#60a5fa";
+        updateActive("hFovDeg", clampedFov, null, null);
+      }
+      els.focalLength.oninput = computeFovFromFocal;
+      els.sensorSize.onchange = computeFovFromFocal;
+
       els.resPreset.onchange = (e) => {
         const [w, h] = e.target.value.split(",").map(Number);
         const cam = cameraState.find((c) => c.id === activeCamId);
@@ -1497,6 +1570,11 @@
       els.tarY.oninput = (e) => {
         targetState.y = parseFloat(e.target.value);
         els.valTarY.innerText = targetState.y + "m";
+        updateAll();
+      };
+      els.tarZ.oninput = (e) => {
+        targetState.z = parseFloat(e.target.value);
+        els.valTarZ.innerText = targetState.z + "m";
         updateAll();
       };
       els.tarW.oninput = (e) => {
@@ -1560,11 +1638,12 @@
     // CORE UPDATE LOGIC
     // ================================================================
     function updateAll() {
-      // Update target marker position
-      // User coords: x → Three.js X, y → Three.js Z
-      targetGroup.position.set(targetState.x, 0, targetState.y);
+      // Update target marker position (z = height)
+      // User coords: x → Three.js X, z → Three.js Y (up), y → Three.js Z
+      targetGroup.position.set(targetState.x, targetState.z, targetState.y);
 
       let activePixels = 0;
+      let activePpm = 0;
       let targetInView = false;
       let distToTarget = 0;
 
@@ -1611,7 +1690,7 @@
           );
           const targetWorldPos = new THREE.Vector3(
             targetState.x,
-            0.5,
+            targetState.z + 0.5,
             targetState.y,
           );
           distToTarget = camWorldPos.distanceTo(targetWorldPos);
@@ -1629,10 +1708,13 @@
             );
             if (angleH <= hFovRad / 2 && angleV <= vFovRad / 2) {
               targetInView = true;
+              // Use depth along optical axis (not Euclidean distance)
+              // for correct rectilinear projection PPM
+              const depthAlongAxis = Math.abs(localTarget.z);
               const frameWidthAtTarget =
-                2 * distToTarget * Math.tan(hFovRad / 2);
-              const ppm = cam.hRes / frameWidthAtTarget;
-              activePixels = ppm * targetState.width;
+                2 * depthAlongAxis * Math.tan(hFovRad / 2);
+              activePpm = cam.hRes / frameWidthAtTarget;
+              activePixels = activePpm * targetState.width;
             }
           }
         }
@@ -1640,6 +1722,7 @@
 
       // Update metrics UI
       els.outActualDist.innerText = distToTarget.toFixed(1) + " m";
+      els.outPpm.innerText = activePpm > 0 ? activePpm.toFixed(1) + " px/m" : "--";
 
       if (!targetInView) {
         els.outPixels.innerText = "0 px";
@@ -1648,26 +1731,44 @@
         els.viabilityBox.style.background = "rgba(30, 41, 59, 0.6)";
         els.outStatus.innerText = "TARGET OUT OF VIEW";
         els.outStatus.style.color = "#64748b";
+        els.outSafety.innerText = "";
       } else {
-        els.outPixels.innerText = Math.round(activePixels) + " px";
-        if (activePixels < 15) {
+        const roundedPx = Math.round(activePixels);
+        els.outPixels.innerText = roundedPx + " px";
+        // Safety margin: recommend 1.5x minimum
+        const safetyRatio = roundedPx / 24;
+        if (roundedPx < 15) {
           els.outPixels.style.color = "#f87171";
           els.viabilityBox.style.borderColor = "rgba(248, 113, 113, 0.4)";
           els.viabilityBox.style.background = "rgba(127, 29, 29, 0.2)";
           els.outStatus.innerText = "CRITICAL: Undetectable.";
           els.outStatus.style.color = "#f87171";
-        } else if (activePixels < 24) {
+          els.outSafety.innerText = "⚠ Need ≥24px for YOLO detection";
+          els.outSafety.style.color = "#f87171";
+        } else if (roundedPx < 24) {
           els.outPixels.style.color = "#fbbf24";
           els.viabilityBox.style.borderColor = "rgba(251, 191, 36, 0.4)";
           els.viabilityBox.style.background = "rgba(120, 82, 0, 0.2)";
           els.outStatus.innerText = "WARNING: Unreliable detection.";
           els.outStatus.style.color = "#fbbf24";
+          els.outSafety.innerText = "⚠ Below 24px minimum — consider closer placement";
+          els.outSafety.style.color = "#fbbf24";
+        } else if (safetyRatio < 1.5) {
+          els.outPixels.style.color = "#4ade80";
+          els.viabilityBox.style.borderColor = "rgba(74, 222, 128, 0.4)";
+          els.viabilityBox.style.background = "rgba(5, 80, 33, 0.2)";
+          els.outStatus.innerText = "OK: Viable for YOLO.";
+          els.outStatus.style.color = "#4ade80";
+          els.outSafety.innerText = `⚡ Safety margin: ${safetyRatio.toFixed(1)}× — consider 1.5× for weather/motion`;
+          els.outSafety.style.color = "#fbbf24";
         } else {
           els.outPixels.style.color = "#4ade80";
           els.viabilityBox.style.borderColor = "rgba(74, 222, 128, 0.4)";
           els.viabilityBox.style.background = "rgba(5, 80, 33, 0.2)";
-          els.outStatus.innerText = "GOOD: Viable for YOLO.";
+          els.outStatus.innerText = "GOOD: Reliable detection.";
           els.outStatus.style.color = "#4ade80";
+          els.outSafety.innerText = `✅ Safety margin: ${safetyRatio.toFixed(1)}× (accounts for weather/motion)`;
+          els.outSafety.style.color = "#4ade80";
         }
       }
 
