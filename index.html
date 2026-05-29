@@ -319,28 +319,216 @@
     /* Theme toggle */
     .theme-btn {
       position: fixed;
-      bottom: 80px;
-      right: 16px;
-      z-index: 20;
-      width: 36px;
-      height: 36px;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      width: 42px;
+      height: 42px;
       border-radius: 50%;
       border: 1px solid rgba(100, 116, 139, 0.3);
       background: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(8px);
-      color: #fbbf24;
+      backdrop-filter: blur(12px);
+      color: #e2e8f0;
       font-size: 16px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+      padding: 0;
+    }
+    .theme-btn:hover {
+      transform: translateX(-50%) scale(1.12);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
     }
 
-    .theme-btn:hover {
-      transform: scale(1.1);
-      border-color: #fbbf24;
+    /* ========================================
+       LIGHT MODE — full override
+       ======================================== */
+
+    /* Body */
+    body.light-mode {
+      color: #334155;
+    }
+
+    /* Panels: frosted glass white */
+    body.light-mode .ui-panel {
+      background: rgba(255, 255, 255, 0.88);
+      border-color: rgba(203, 213, 225, 0.6);
+      color: #334155;
+      box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.08),
+        0 0 0 1px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    /* Panel header */
+    body.light-mode .panel-header {
+      background: linear-gradient(135deg, rgba(248, 250, 252, 0.95), rgba(241, 245, 249, 0.95)) !important;
+      border-bottom-color: rgba(203, 213, 225, 0.5) !important;
+    }
+    body.light-mode .panel-header h2 {
+      color: #1e293b !important;
+    }
+
+    /* Camera tabs */
+    body.light-mode #cam-tabs {
+      background: rgba(241, 245, 249, 0.6) !important;
+      border-bottom-color: rgba(203, 213, 225, 0.4) !important;
+    }
+    body.light-mode .cam-tab {
+      background: rgba(255, 255, 255, 0.9) !important;
+      border-color: rgba(203, 213, 225, 0.6) !important;
+      color: #64748b !important;
+    }
+    body.light-mode .cam-tab.active {
+      background: rgba(59, 130, 246, 0.08) !important;
+      border-color: #3b82f6 !important;
+      color: #2563eb !important;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    /* Section boxes */
+    body.light-mode .section-box {
+      background: rgba(248, 250, 252, 0.9);
+      border-color: rgba(203, 213, 225, 0.5);
+    }
+
+    /* Section labels */
+    body.light-mode .section-label {
+      color: #64748b !important;
+    }
+
+    /* Slider labels & values */
+    body.light-mode .slider-header .label {
+      color: #64748b !important;
+    }
+    body.light-mode .slider-header .value {
+      color: #1e293b !important;
+    }
+
+    /* Headings */
+    body.light-mode h2,
+    body.light-mode h3 {
+      color: #1e293b !important;
+    }
+
+    /* Slider track */
+    body.light-mode input[type="range"] {
+      background-color: #e2e8f0;
+    }
+    body.light-mode input[type="range"]::-webkit-slider-thumb {
+      border-color: #ffffff;
+      box-shadow:
+        0 0 4px rgba(59, 130, 246, 0.4),
+        0 1px 3px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Select dropdown */
+    body.light-mode select {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: #1e293b;
+    }
+    body.light-mode select:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+    }
+
+    /* Joystick labels */
+    body.light-mode .joystick-labels {
+      color: #64748b !important;
+    }
+
+    /* Buttons */
+    body.light-mode .btn-ghost {
+      background: rgba(241, 245, 249, 0.8);
+      color: #475569;
+      border-color: rgba(203, 213, 225, 0.6);
+    }
+    body.light-mode .btn-ghost:hover {
+      background: rgba(226, 232, 240, 0.8);
+      color: #1e293b;
+    }
+    body.light-mode .btn-danger {
+      color: #dc2626;
+      border-color: rgba(220, 38, 38, 0.25);
+    }
+    body.light-mode .btn-danger:hover {
+      background: rgba(220, 38, 38, 0.06);
+    }
+
+    /* Copy section */
+    body.light-mode .copy-section {
+      background: rgba(248, 250, 252, 0.95);
+      border-color: rgba(59, 130, 246, 0.15);
+    }
+
+    /* Collapse button */
+    body.light-mode .collapse-btn {
+      color: #64748b !important;
+    }
+    body.light-mode .collapse-btn:hover {
+      background: rgba(148, 163, 184, 0.15);
+      color: #1e293b !important;
+    }
+
+    /* Theme button in light mode */
+    body.light-mode .theme-btn {
+      background: rgba(255, 255, 255, 0.92) !important;
+      color: #475569 !important;
+      border-color: rgba(203, 213, 225, 0.6) !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+    }
+    body.light-mode .theme-btn:hover {
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12) !important;
+    }
+
+    /* Target panel inline-styled spans */
+    body.light-mode span[style*="color: #94a3b8"] {
+      color: #64748b !important;
+    }
+    body.light-mode span[style*="color: #e2e8f0"] {
+      color: #1e293b !important;
+    }
+
+    /* Right panel metric labels */
+    body.light-mode div[style*="color: #94a3b8"] {
+      color: #64748b !important;
+    }
+    body.light-mode span[style*="font-weight: 600"][style*="color: #e2e8f0"] {
+      color: #1e293b !important;
+    }
+
+    /* Focal length result */
+    body.light-mode #fl-result {
+      color: #64748b !important;
+    }
+
+    /* Scrollbar light */
+    body.light-mode ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+    }
+    body.light-mode ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Color swatch active border */
+    body.light-mode .color-swatch.active {
+      border-color: #334155;
+    }
+
+    /* Viability box in light mode */
+    body.light-mode #viability-box {
+      background: rgba(248, 250, 252, 0.9) !important;
+    }
+
+    /* AI section */
+    body.light-mode div[style*="background: rgba(79, 70, 229"] {
+      background: rgba(99, 102, 241, 0.06) !important;
+      border-color: rgba(99, 102, 241, 0.15) !important;
     }
   </style>
 </head>
@@ -348,9 +536,19 @@
 <body>
   <div id="canvas-container"></div>
 
+  <!-- Theme Toggle (fixed, top center) -->
+  <button id="theme-toggle" class="theme-btn" title="Toggle light / dark mode">
+    <svg id="theme-icon-sun" style="display: none; width: 20px; height: 20px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+    <svg id="theme-icon-moon" style="width: 20px; height: 20px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+    </svg>
+  </button>
+
   <!-- ===== LEFT PANEL: Camera Array Manager ===== -->
   <div class="ui-panel" style="top: 16px; left: 16px; width: 340px; max-height: 95vh">
-    <div style="
+    <div class="panel-header" style="
           padding: 12px 14px;
           border-bottom: 1px solid rgba(71, 85, 105, 0.3);
           display: flex;
@@ -587,63 +785,64 @@
       </svg>
       TARGET
     </div>
-    <div style="display: flex; gap: 10px">
-      <div style="flex: 1">
-        <div style="
-                display: flex;
-                justify-content: space-between;
-                font-size: 10px;
-                font-weight: 600;
-                margin-bottom: 2px;
-              ">
-          <span style="color: #94a3b8">X Position</span><span id="target-x-val"
-            style="font-family: monospace; color: #e2e8f0">0m</span>
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+      <div style="display: flex; gap: 10px">
+        <div style="flex: 1">
+          <div style="
+                  display: flex;
+                  justify-content: space-between;
+                  font-size: 10px;
+                  font-weight: 600;
+                  margin-bottom: 2px;
+                ">
+            <span style="color: #94a3b8">X Position</span><span id="target-x-val"
+              style="font-family: monospace; color: #e2e8f0">0m</span>
+          </div>
+          <input type="range" id="target-x" min="-100" max="100" step="1" value="0" />
         </div>
-        <input type="range" id="target-x" min="-100" max="100" step="1" value="0" />
+        <div style="flex: 1">
+          <div style="
+                  display: flex;
+                  justify-content: space-between;
+                  font-size: 10px;
+                  font-weight: 600;
+                  margin-bottom: 2px;
+                ">
+            <span style="color: #94a3b8">Y Position</span><span id="target-y-val"
+              style="font-family: monospace; color: #e2e8f0">-50m</span>
+          </div>
+          <input type="range" id="target-y" min="-150" max="50" step="1" value="-50" />
+        </div>
       </div>
-      <div style="flex: 1">
-        <div style="
-                display: flex;
-                justify-content: space-between;
-                font-size: 10px;
-                font-weight: 600;
-                margin-bottom: 2px;
-              ">
-          <span style="color: #94a3b8">Y Position</span><span id="target-y-val"
-            style="font-family: monospace; color: #e2e8f0">-50m</span>
+      <div style="display: flex; gap: 10px">
+        <div style="flex: 1">
+          <div style="
+                  display: flex;
+                  justify-content: space-between;
+                  font-size: 10px;
+                  font-weight: 600;
+                  margin-bottom: 2px;
+                ">
+            <span style="color: #94a3b8">Z Height</span><span id="target-z-val"
+              style="font-family: monospace; color: #e2e8f0">0m</span>
+          </div>
+          <input type="range" id="target-z" min="0" max="50" step="0.5" value="0" />
         </div>
-        <input type="range" id="target-y" min="-150" max="50" step="1" value="-50" />
+        <div style="flex: 1">
+          <div style="
+                  display: flex;
+                  justify-content: space-between;
+                  font-size: 10px;
+                  font-weight: 600;
+                  margin-bottom: 2px;
+                ">
+            <span style="color: #94a3b8">Target Width</span><span id="target-w-val"
+              style="font-family: monospace; color: #e2e8f0">0.6m</span>
+          </div>
+          <input type="range" id="target-w" min="0.1" max="2.0" step="0.1" value="0.6" />
+        </div>
       </div>
     </div>
-    <div style="display: flex; gap: 10px">
-      <div style="flex: 1">
-        <div style="
-                display: flex;
-                justify-content: space-between;
-                font-size: 10px;
-                font-weight: 600;
-                margin-bottom: 2px;
-              ">
-          <span style="color: #94a3b8">Z Height</span><span id="target-z-val"
-            style="font-family: monospace; color: #e2e8f0">0m</span>
-        </div>
-        <input type="range" id="target-z" min="0" max="50" step="0.5" value="0" />
-      </div>
-      <div style="flex: 1">
-        <div style="
-                display: flex;
-                justify-content: space-between;
-                font-size: 10px;
-                font-weight: 600;
-                margin-bottom: 2px;
-              ">
-          <span style="color: #94a3b8">Target Width</span><span id="target-w-val"
-            style="font-family: monospace; color: #e2e8f0">0.6m</span>
-        </div>
-        <input type="range" id="target-w" min="0.1" max="2.0" step="0.1" value="0.6" />
-      </div>
-    </div>
-  </div>
   </div>
 
   <!-- ===== RIGHT PANEL: Metrics & AI ===== -->
@@ -757,9 +956,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Theme toggle -->
-  <button id="theme-toggle" class="theme-btn" title="Toggle light/dark mode">☀️</button>
 
   <script type="module">
     // ================================================================
@@ -1732,7 +1928,6 @@
       let isDark = true;
       els.themeToggle.onclick = () => {
         isDark = !isDark;
-        els.themeToggle.innerText = isDark ? '☀️' : '🌙';
         applyTheme(isDark);
       };
 
@@ -1784,16 +1979,16 @@
         }
       }
 
-      // Update UI panels
-      document.querySelectorAll('.ui-panel').forEach(p => {
-        if (dark) {
-          p.style.background = 'rgba(15, 23, 42, 0.92)';
-          p.style.borderColor = 'rgba(100, 116, 139, 0.25)';
-        } else {
-          p.style.background = 'rgba(255, 255, 255, 0.88)';
-          p.style.borderColor = 'rgba(148, 163, 184, 0.35)';
-        }
-      });
+      // Toggle body class for CSS overrides
+      if (dark) {
+        document.body.classList.remove('light-mode');
+        document.getElementById('theme-icon-sun').style.display = 'none';
+        document.getElementById('theme-icon-moon').style.display = 'block';
+      } else {
+        document.body.classList.add('light-mode');
+        document.getElementById('theme-icon-sun').style.display = 'block';
+        document.getElementById('theme-icon-moon').style.display = 'none';
+      }
     }
 
     // ================================================================
