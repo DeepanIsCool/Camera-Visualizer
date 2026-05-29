@@ -957,6 +957,40 @@
     </div>
   </div>
 
+  <!-- ===== BOTTOM-RIGHT: Sun Controls ===== -->
+  <div class="ui-panel" style="
+        bottom: 16px;
+        right: 16px;
+        width: 200px;
+        padding: 10px 12px;
+      ">
+    <div style="
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 8px;
+        ">
+      <svg style="width: 16px; height: 16px; color: #fbbf24; flex-shrink: 0" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M12 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm0 15a5 5 0 100-10 5 5 0 000 10zm9-4h-1a1 1 0 110-2h1a1 1 0 110 2zM4 13H3a1 1 0 110-2h1a1 1 0 110 2zm15.071-6.071a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM7.05 18.364a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM20.485 18.364l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM7.05 5.636l-.707.707A1 1 0 114.93 4.93l.707-.707a1 1 0 011.414 1.414z" />
+      </svg>
+      <span style="font-size: 11px; font-weight: 700; color: #fbbf24">Sun Controls</span>
+    </div>
+    <div style="margin-bottom: 6px">
+      <div class="slider-header">
+        <span class="label">Azimuth</span>
+        <span class="value" id="sun-az-val">45°</span>
+      </div>
+      <input type="range" id="sun-azimuth" min="0" max="360" step="1" value="45" />
+    </div>
+    <div>
+      <div class="slider-header">
+        <span class="label">Elevation</span>
+        <span class="value" id="sun-el-val">35°</span>
+      </div>
+      <input type="range" id="sun-elevation" min="5" max="85" step="1" value="35" />
+    </div>
+  </div>
+
   <script type="module">
     // ================================================================
     // CONFIG & STATE
@@ -997,10 +1031,15 @@
     let scene, camera, renderer, controls, clock;
     let targetGroup;
     let waterMesh, waterMaterial;
+    let sunMesh, sunLight, sunGlow, sunPointLight;  // Sun objects
+    let sunAzimuth = 45;   // degrees (0 = East, 90 = South)
+    let sunElevation = 35; // degrees above horizon
+    let isDark = true;  // Theme state (module-scoped)
     const cam3DObjects = {};
 
     // Joystick state
     const joystickXY = { active: false, startPan: 0, startTilt: 0 };
+    let joystickRedraw = null;  // Set by initJoystickXY for theme redraws
 
     // ================================================================
     // DOM ELEMENTS
@@ -1069,6 +1108,12 @@
       joystickXYCanvas: document.getElementById("joystick-xy"),
       joyXVal: document.getElementById("joy-x-val"),
       joyYVal: document.getElementById("joy-y-val"),
+
+      // Sun controls
+      sunAzSlider: document.getElementById("sun-azimuth"),
+      sunElSlider: document.getElementById("sun-elevation"),
+      sunAzVal: document.getElementById("sun-az-val"),
+      sunElVal: document.getElementById("sun-el-val"),
     };
 
     // ================================================================
@@ -1132,11 +1177,14 @@
 
       // Lighting
       scene.add(new THREE.AmbientLight(0x8899bb, 0.6));
-      const dirLight = new THREE.DirectionalLight(0xffeedd, 0.8);
-      dirLight.position.set(30, 60, 30);
-      scene.add(dirLight);
+      sunLight = new THREE.DirectionalLight(0xffeedd, 0.8);
+      sunLight.position.set(80, 120, 60);
+      scene.add(sunLight);
       const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x1a4060, 0.4);
       scene.add(hemiLight);
+
+      // Sun visual
+      createSun();
 
       // Water Plane
       createWater();
@@ -1146,6 +1194,70 @@
 
       // Target Marker
       createTargetMarker();
+    }
+
+    // ================================================================
+    // SUN
+    // ================================================================
+    function createSun() {
+      // Sun sphere — fog:false so it's always visible
+      const sunGeo = new THREE.SphereGeometry(12, 32, 32);
+      const sunMat = new THREE.MeshBasicMaterial({
+        color: 0xfff4cc,
+        fog: false,
+      });
+      sunMesh = new THREE.Mesh(sunGeo, sunMat);
+      scene.add(sunMesh);
+
+      // Glow ring (sprite)
+      const glowCanvas = document.createElement('canvas');
+      glowCanvas.width = 256;
+      glowCanvas.height = 256;
+      const gCtx = glowCanvas.getContext('2d');
+      const gradient = gCtx.createRadialGradient(128, 128, 20, 128, 128, 128);
+      gradient.addColorStop(0, 'rgba(255, 244, 200, 0.9)');
+      gradient.addColorStop(0.2, 'rgba(255, 230, 140, 0.5)');
+      gradient.addColorStop(0.5, 'rgba(255, 200, 80, 0.12)');
+      gradient.addColorStop(1, 'rgba(255, 160, 30, 0)');
+      gCtx.fillStyle = gradient;
+      gCtx.fillRect(0, 0, 256, 256);
+      const glowTexture = new THREE.CanvasTexture(glowCanvas);
+      const glowMat = new THREE.SpriteMaterial({
+        map: glowTexture,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        fog: false,
+      });
+      sunGlow = new THREE.Sprite(glowMat);
+      sunGlow.scale.set(120, 120, 1);
+      scene.add(sunGlow);
+
+      // Point light emanating from the sun
+      sunPointLight = new THREE.PointLight(0xffeecc, 0.6, 600);
+      scene.add(sunPointLight);
+
+      // Set initial position
+      updateSunPosition();
+    }
+
+    function updateSunPosition() {
+      const R = 300; // distance from origin
+      const azRad = sunAzimuth * Math.PI / 180;
+      const elRad = sunElevation * Math.PI / 180;
+      const x = R * Math.cos(elRad) * Math.sin(azRad);
+      const y = R * Math.sin(elRad);
+      const z = R * Math.cos(elRad) * Math.cos(azRad);
+
+      if (sunMesh) sunMesh.position.set(x, y, z);
+      if (sunGlow) sunGlow.position.set(x, y, z);
+      if (sunPointLight) sunPointLight.position.set(x, y, z);
+      if (sunLight) sunLight.position.set(x, y, z);
+
+      // Update water shader sun direction
+      if (waterMaterial) {
+        waterMaterial.uniforms.uSunDir.value.set(x, y, z).normalize();
+      }
     }
 
     // ================================================================
@@ -1870,6 +1982,18 @@
         updateAll();
       };
 
+      // Sun Controls
+      els.sunAzSlider.oninput = (e) => {
+        sunAzimuth = parseFloat(e.target.value);
+        els.sunAzVal.innerText = sunAzimuth + "°";
+        updateSunPosition();
+      };
+      els.sunElSlider.oninput = (e) => {
+        sunElevation = parseFloat(e.target.value);
+        els.sunElVal.innerText = sunElevation + "°";
+        updateSunPosition();
+      };
+
       // Copy Config
       els.toggleCopyBtn.onclick = () => {
         const isVisible = els.copySection.style.display !== "none";
@@ -1925,7 +2049,6 @@
       };
 
       // Theme toggle
-      let isDark = true;
       els.themeToggle.onclick = () => {
         isDark = !isDark;
         applyTheme(isDark);
@@ -1989,6 +2112,17 @@
         document.getElementById('theme-icon-sun').style.display = 'block';
         document.getElementById('theme-icon-moon').style.display = 'none';
       }
+
+      // Sun intensity for light/dark
+      if (sunLight) {
+        sunLight.intensity = dark ? 0.8 : 1.2;
+      }
+      if (sunGlow) {
+        sunGlow.material.opacity = dark ? 0.7 : 1.0;
+      }
+
+      // Redraw joystick with new theme colors
+      if (joystickRedraw) joystickRedraw();
     }
 
     // ================================================================
@@ -2160,19 +2294,20 @@
       let knobY = centerY;
 
       function draw() {
+        const light = !isDark;
         ctx.clearRect(0, 0, W, H);
 
         // Outer track
         ctx.beginPath();
         ctx.arc(centerX, centerY, maxR + 8, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(30, 41, 59, 0.8)";
+        ctx.fillStyle = light ? "rgba(241, 245, 249, 0.9)" : "rgba(30, 41, 59, 0.8)";
         ctx.fill();
-        ctx.strokeStyle = "rgba(100, 116, 139, 0.5)";
+        ctx.strokeStyle = light ? "rgba(203, 213, 225, 0.7)" : "rgba(100, 116, 139, 0.5)";
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
         // Direction labels
-        ctx.fillStyle = "rgba(148, 163, 184, 0.5)";
+        ctx.fillStyle = light ? "rgba(100, 116, 139, 0.7)" : "rgba(148, 163, 184, 0.5)";
         ctx.font = "9px Inter, Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -2187,20 +2322,20 @@
         ctx.lineTo(centerX + maxR, centerY);
         ctx.moveTo(centerX, centerY - maxR);
         ctx.lineTo(centerX, centerY + maxR);
-        ctx.strokeStyle = "rgba(71, 85, 105, 0.3)";
+        ctx.strokeStyle = light ? "rgba(203, 213, 225, 0.5)" : "rgba(71, 85, 105, 0.3)";
         ctx.lineWidth = 1;
         ctx.stroke();
 
         // Center dot
         ctx.beginPath();
         ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(100, 116, 139, 0.5)";
+        ctx.fillStyle = light ? "rgba(148, 163, 184, 0.6)" : "rgba(100, 116, 139, 0.5)";
         ctx.fill();
 
         // Knob shadow
         ctx.beginPath();
         ctx.arc(knobX + 1, knobY + 2, 18, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+        ctx.fillStyle = light ? "rgba(0, 0, 0, 0.1)" : "rgba(0, 0, 0, 0.25)";
         ctx.fill();
 
         // Knob
@@ -2210,18 +2345,26 @@
           knobX - 3, knobY - 3, 0,
           knobX, knobY, 18,
         );
-        grad.addColorStop(0, "#93c5fd");
-        grad.addColorStop(1, "#3b82f6");
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.strokeStyle = "#2563eb";
+        if (light) {
+          grad.addColorStop(0, "#f8fafc");
+          grad.addColorStop(1, "#e2e8f0");
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.strokeStyle = "#94a3b8";
+        } else {
+          grad.addColorStop(0, "#93c5fd");
+          grad.addColorStop(1, "#3b82f6");
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.strokeStyle = "#2563eb";
+        }
         ctx.lineWidth = 2;
         ctx.stroke();
 
         // Knob highlight
         ctx.beginPath();
         ctx.arc(knobX - 5, knobY - 5, 7, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.fillStyle = light ? "rgba(255, 255, 255, 0.6)" : "rgba(255, 255, 255, 0.3)";
         ctx.fill();
       }
 
@@ -2294,6 +2437,7 @@
       canvas.addEventListener("pointercancel", release);
       canvas.addEventListener("lostpointercapture", release);
 
+      joystickRedraw = draw;  // Expose for theme redraws
       draw();
     }
 
